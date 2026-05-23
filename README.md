@@ -48,3 +48,7 @@ app/build/outputs/apk/release/app-release.apk
 当前版本：`1.0-beta1`。
 
 这是测试版模块，会 hook `system_server` 的输入处理逻辑，请谨慎使用。
+
+## 贡献者
+
+详见 [CONTRIBUTORS.md](CONTRIBUTORS.md)。
