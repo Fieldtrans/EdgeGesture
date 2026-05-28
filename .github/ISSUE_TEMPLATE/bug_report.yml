@@ -1,0 +1,70 @@
+name: Bug report
+description: Report a gesture, compatibility, or installation problem.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Please include enough device and LSPosed information so the issue can be reproduced.
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      description: Phone model and ROM.
+      placeholder: "Example: Xiaomi 15, HyperOS ..."
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android version
+      placeholder: "Example: Android 16"
+    validations:
+      required: true
+  - type: input
+    id: lsposed
+    attributes:
+      label: LSPosed version
+      placeholder: "Example: LSPosed 1.9.x"
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Gesture mode
+      options:
+        - Line pointer
+        - Tracker + Cursor
+        - Notification shade trigger
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Enable ...
+        2. Swipe from ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: LSPosed logs
+      description: Search for EdgeGesture in LSPosed logs and paste the relevant lines.
+      render: text

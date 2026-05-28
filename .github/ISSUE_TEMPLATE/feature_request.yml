@@ -1,0 +1,29 @@
+name: Feature request
+description: Suggest a new gesture, action, or tuning option.
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What one-handed gesture problem are you trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior you want.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Mention any apps or modules with similar behavior.
+  - type: input
+    id: device
+    attributes:
+      label: Device / Android version
+      placeholder: "Example: Pixel 9, Android 16"
