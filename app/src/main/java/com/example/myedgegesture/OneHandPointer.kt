@@ -30,6 +30,7 @@ object OneHandPointer {
     private var session: Session? = null
 
     private data class Session(
+        val context: Context,
         val overlay: PointerOverlay,
         val width: Float,
         val height: Float,
@@ -49,6 +50,7 @@ object OneHandPointer {
         val startupInset: Float,
         val maxFingerStep: Float,
         val maxPointerSpeed: Float,
+        val notificationHotspotHeight: Float,
         val smoothing: Float,
         val controlStyle: String,
         val cursorStartX: Float,
@@ -67,7 +69,9 @@ object OneHandPointer {
         var settleMoveCount: Int = CONTROL_START_SKIP_MOVES,
         var framePosted: Boolean = false,
         var lastFrameTimeNanos: Long = 0L,
-        var timeoutRunnable: Runnable? = null
+        var timeoutRunnable: Runnable? = null,
+        var notificationShadeRunnable: Runnable? = null,
+        var notificationShadeTriggered: Boolean = false
     )
 
     fun isActive(): Boolean {
@@ -76,6 +80,7 @@ object OneHandPointer {
 
     fun cancel() {
         session?.let { current ->
+            cancelNotificationShadeHold(current)
             cancelTimeout(current)
             current.overlay.dismiss()
         }
@@ -121,6 +126,7 @@ object OneHandPointer {
         val speedScale = maxSpeedPercent.coerceIn(40, 500) / 100f
         val maxFingerStep = dp(context, MAX_FINGER_STEP_DP) * speedScale
         val maxPointerSpeed = bounds.second * speedScale
+        val notificationHotspotHeight = notificationHotspotHeight(context, bounds.second)
         val pointerColor = Color.rgb(
             RuntimeGestureConfig.pointerColorRed.coerceIn(0, 255),
             RuntimeGestureConfig.pointerColorGreen.coerceIn(0, 255),
@@ -145,6 +151,7 @@ object OneHandPointer {
         }
 
         val newSession = Session(
+            context = context.applicationContext ?: context,
             overlay = overlay,
             width = bounds.first,
             height = bounds.second,
@@ -164,6 +171,7 @@ object OneHandPointer {
             startupInset = startupInset,
             maxFingerStep = maxFingerStep,
             maxPointerSpeed = maxPointerSpeed,
+            notificationHotspotHeight = notificationHotspotHeight,
             smoothing = smoothing,
             controlStyle = controlStyle,
             cursorStartX = initialPointer.first,
@@ -196,6 +204,7 @@ object OneHandPointer {
             newSession.controlStyle
         )
         scheduleTimeout(newSession)
+        updateNotificationShadeHold(newSession)
         DebugLog.info("one hand pointer started")
         return true
     }
@@ -446,6 +455,7 @@ object OneHandPointer {
                 current.pointerY,
                 current.controlStyle
             )
+            updateNotificationShadeHold(current)
             return false
         }
 
@@ -476,10 +486,12 @@ object OneHandPointer {
             current.pointerY,
             current.controlStyle
         )
+        updateNotificationShadeHold(current)
         return true
     }
 
     private fun finish(context: Context, current: Session, click: Boolean) {
+        cancelNotificationShadeHold(current)
         cancelTimeout(current)
         val arrowTipX = current.pointerX
         val arrowTipY = current.pointerY
@@ -505,6 +517,7 @@ object OneHandPointer {
     private fun scheduleTimeout(current: Session) {
         val runnable = Runnable {
             if (session !== current) return@Runnable
+            cancelNotificationShadeHold(current)
             current.overlay.dismiss()
             session = null
             DebugLog.info("pointer auto canceled by timeout")
@@ -523,6 +536,79 @@ object OneHandPointer {
             mainHandler?.removeCallbacks(runnable)
         }
         current.timeoutRunnable = null
+    }
+
+    private fun updateNotificationShadeHold(current: Session) {
+        if (current.notificationShadeTriggered) return
+
+        if (!isInsideNotificationHotspot(current)) {
+            cancelNotificationShadeHold(current)
+            return
+        }
+
+        if (current.notificationShadeRunnable != null) return
+
+        val runnable = Runnable {
+            if (session !== current || current.notificationShadeTriggered) return@Runnable
+            current.notificationShadeRunnable = null
+            if (!isInsideNotificationHotspot(current)) return@Runnable
+
+            current.notificationShadeTriggered = true
+            cancelTimeout(current)
+            current.overlay.dismiss()
+            session = null
+
+            val expanded = expandNotificationShade(current.context)
+            DebugLog.info("notification shade hold triggered expanded=$expanded")
+        }
+
+        current.notificationShadeRunnable = runnable
+        postToMain {
+            mainHandler?.postDelayed(runnable, NOTIFICATION_SHADE_HOLD_MS)
+        }
+        DebugLog.info("notification shade hold started")
+    }
+
+    private fun cancelNotificationShadeHold(current: Session) {
+        val runnable = current.notificationShadeRunnable ?: return
+        mainHandler?.removeCallbacks(runnable)
+        current.notificationShadeRunnable = null
+        DebugLog.info("notification shade hold canceled")
+    }
+
+    private fun isInsideNotificationHotspot(current: Session): Boolean {
+        return current.pointerY <= current.notificationHotspotHeight &&
+                current.pointerX >= 0f &&
+                current.pointerX <= current.width
+    }
+
+    private fun expandNotificationShade(context: Context): Boolean {
+        return try {
+            val statusBarManager = context.getSystemService("statusbar") ?: return false
+            val method = arrayOf("expandNotificationsPanel", "expand")
+                .firstNotNullOfOrNull { name ->
+                    runCatching {
+                        statusBarManager.javaClass.methods.firstOrNull {
+                            it.name == name && it.parameterTypes.isEmpty()
+                        } ?: statusBarManager.javaClass.getDeclaredMethod(name)
+                    }.getOrNull()
+                } ?: return false
+
+            method.isAccessible = true
+            method.invoke(statusBarManager)
+            true
+        } catch (t: Throwable) {
+            DebugLog.info("notification shade expand failed: ${t.message}")
+            false
+        }
+    }
+
+    private fun notificationHotspotHeight(context: Context, screenHeight: Float): Float {
+        val density = context.resources.displayMetrics.density
+        val minHeight = NOTIFICATION_HOTSPOT_MIN_DP * density
+        val maxHeight = NOTIFICATION_HOTSPOT_MAX_DP * density
+        return (screenHeight * NOTIFICATION_HOTSPOT_SCREEN_FRACTION)
+            .coerceIn(minHeight, maxHeight)
     }
 
     private fun shouldCancelClick(current: Session): Boolean {
@@ -1245,5 +1331,9 @@ object OneHandPointer {
     private const val TRACKER_CURSOR_START_X_FROM_RIGHT = 0.44f
     private const val TRACKER_CURSOR_START_X_FROM_LEFT = 0.56f
     private const val TRACKER_CURSOR_START_Y = 0.38f
+    private const val NOTIFICATION_SHADE_HOLD_MS = 2_000L
+    private const val NOTIFICATION_HOTSPOT_SCREEN_FRACTION = 0.085f
+    private const val NOTIFICATION_HOTSPOT_MIN_DP = 72f
+    private const val NOTIFICATION_HOTSPOT_MAX_DP = 120f
     private const val FRAME_FALLBACK_DELAY_MS = 8L
 }
