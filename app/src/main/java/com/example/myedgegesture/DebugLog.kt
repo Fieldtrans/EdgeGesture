@@ -5,7 +5,7 @@ import android.os.SystemClock
 import de.robv.android.xposed.XposedBridge
 
 object DebugLog {
-    private const val TAG = "MyEdgeGesture"
+    private const val TAG = "EdgeGesture"
 
     fun info(message: String) {
         XposedBridge.log("$TAG: $message")

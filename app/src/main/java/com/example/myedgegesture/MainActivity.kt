@@ -3,15 +3,19 @@ package com.example.myedgegesture
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +36,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountTree
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PowerSettingsNew
@@ -41,6 +46,7 @@ import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Upload
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -80,6 +86,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -117,6 +124,16 @@ class MainActivity : ComponentActivity() {
                         settings = settings.withRecommendedValues()
                         saveConfig(settings, showToast = false)
                         Toast.makeText(this, t("已恢复推荐值", "Recommended values restored"), Toast.LENGTH_SHORT).show()
+                    },
+                    onExport = { uri ->
+                        exportConfig(uri, settings)
+                    },
+                    onImport = { uri ->
+                        importConfig(uri)?.let { imported ->
+                            settings = imported
+                            saveConfig(imported, showToast = false)
+                            Toast.makeText(this, t("配置已导入", "Config imported"), Toast.LENGTH_SHORT).show()
+                        }
                     },
                     hookStatus = readHookStatus()
                 )
@@ -192,6 +209,10 @@ class MainActivity : ComponentActivity() {
             ) ?: GestureConfig.DEFAULT_POINTER_CONTROL_STYLE,
             trackerBallDp = prefs.getInt(GestureConfig.KEY_TRACKER_BALL_DP, GestureConfig.DEFAULT_TRACKER_BALL_DP),
             trackerCursorDp = prefs.getInt(GestureConfig.KEY_TRACKER_CURSOR_DP, GestureConfig.DEFAULT_TRACKER_CURSOR_DP),
+            trackerCancelRadiusDp = prefs.getInt(
+                GestureConfig.KEY_TRACKER_CANCEL_RADIUS_DP,
+                GestureConfig.DEFAULT_TRACKER_CANCEL_RADIUS_DP
+            ),
             trackerSensitivity = prefs.getInt(GestureConfig.KEY_TRACKER_SENSITIVITY, GestureConfig.DEFAULT_TRACKER_SENSITIVITY),
             trackerMaxSpeed = prefs.getInt(GestureConfig.KEY_TRACKER_MAX_SPEED, GestureConfig.DEFAULT_TRACKER_MAX_SPEED),
             trackerSmoothing = prefs.getInt(GestureConfig.KEY_TRACKER_SMOOTHING, GestureConfig.DEFAULT_TRACKER_SMOOTHING),
@@ -242,6 +263,7 @@ class MainActivity : ComponentActivity() {
             state.pointerControlStyle,
             state.trackerBallDp,
             state.trackerCursorDp,
+            state.trackerCancelRadiusDp,
             state.trackerSensitivity,
             state.trackerMaxSpeed,
             state.trackerSmoothing,
@@ -254,6 +276,28 @@ class MainActivity : ComponentActivity() {
 
         if (showToast) {
             Toast.makeText(this, t("设置已保存", "Settings saved"), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun exportConfig(uri: Uri, state: SettingsState) {
+        try {
+            contentResolver.openOutputStream(uri)?.use { output ->
+                output.write(state.toJsonString().toByteArray(Charsets.UTF_8))
+            } ?: error("openOutputStream returned null")
+            Toast.makeText(this, t("配置已导出", "Config exported"), Toast.LENGTH_SHORT).show()
+        } catch (t: Throwable) {
+            Toast.makeText(this, t("导出失败: ${t.message}", "Export failed: ${t.message}"), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun importConfig(uri: Uri): SettingsState? {
+        return try {
+            val text = contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                ?: error("openInputStream returned null")
+            SettingsState.fromJsonString(text)
+        } catch (t: Throwable) {
+            Toast.makeText(this, t("导入失败: ${t.message}", "Import failed: ${t.message}"), Toast.LENGTH_LONG).show()
+            null
         }
     }
 
@@ -286,6 +330,7 @@ class MainActivity : ComponentActivity() {
             .putString(GestureConfig.KEY_POINTER_CONTROL_STYLE, state.pointerControlStyle)
             .putInt(GestureConfig.KEY_TRACKER_BALL_DP, state.trackerBallDp)
             .putInt(GestureConfig.KEY_TRACKER_CURSOR_DP, state.trackerCursorDp)
+            .putInt(GestureConfig.KEY_TRACKER_CANCEL_RADIUS_DP, state.trackerCancelRadiusDp)
             .putInt(GestureConfig.KEY_TRACKER_SENSITIVITY, state.trackerSensitivity)
             .putInt(GestureConfig.KEY_TRACKER_MAX_SPEED, state.trackerMaxSpeed)
             .putInt(GestureConfig.KEY_TRACKER_SMOOTHING, state.trackerSmoothing)
@@ -348,6 +393,7 @@ private data class SettingsState(
     val pointerControlStyle: String,
     val trackerBallDp: Int,
     val trackerCursorDp: Int,
+    val trackerCancelRadiusDp: Int,
     val trackerSensitivity: Int,
     val trackerMaxSpeed: Int,
     val trackerSmoothing: Int,
@@ -365,6 +411,47 @@ private data class SettingsState(
 
     val timeoutSeconds: Int
         get() = pointerTimeoutMs / 1000
+
+    fun toJsonString(): String {
+        val actions = JSONObject()
+        actionByKey.toSortedMap().forEach { (key, value) ->
+            actions.put(key, value)
+        }
+
+        return JSONObject()
+            .put("schemaVersion", 1)
+            .put("app", "EdgeGesture")
+            .put("enabled", enabled)
+            .put("edgeWidthDp", edgeWidthDp)
+            .put("swipeDistanceDp", swipeDistanceDp)
+            .put("triggerRegionStartPercent", triggerRegionStartPercent)
+            .put("triggerRegionEndPercent", triggerRegionEndPercent)
+            .put("swipeAngleDegrees", swipeAngleDegrees)
+            .put("pointerRadiusDp", pointerRadiusDp)
+            .put("pointerControlAlpha", pointerControlAlpha)
+            .put("pointerSensitivity", pointerSensitivity)
+            .put("pointerArrowDp", pointerArrowDp)
+            .put("pointerTouchAreaDp", pointerTouchAreaDp)
+            .put("pointerLineDp", pointerLineDp)
+            .put("pointerMarginDp", pointerMarginDp)
+            .put("pointerCancelDistanceDp", pointerCancelDistanceDp)
+            .put("pointerTimeoutMs", pointerTimeoutMs)
+            .put("pointerSmoothing", pointerSmoothing)
+            .put("pointerMaxSpeed", pointerMaxSpeed)
+            .put("pointerCurve", pointerCurve)
+            .put("pointerControlStyle", pointerControlStyle)
+            .put("trackerBallDp", trackerBallDp)
+            .put("trackerCursorDp", trackerCursorDp)
+            .put("trackerCancelRadiusDp", trackerCancelRadiusDp)
+            .put("trackerSensitivity", trackerSensitivity)
+            .put("trackerMaxSpeed", trackerMaxSpeed)
+            .put("trackerSmoothing", trackerSmoothing)
+            .put("pointerColorRed", pointerColorRed)
+            .put("pointerColorGreen", pointerColorGreen)
+            .put("pointerColorBlue", pointerColorBlue)
+            .put("actionByKey", actions)
+            .toString(2)
+    }
 
     fun withRecommendedValues(): SettingsState {
         return copy(
@@ -388,6 +475,7 @@ private data class SettingsState(
             pointerControlStyle = GestureConfig.DEFAULT_POINTER_CONTROL_STYLE,
             trackerBallDp = GestureConfig.DEFAULT_TRACKER_BALL_DP,
             trackerCursorDp = GestureConfig.DEFAULT_TRACKER_CURSOR_DP,
+            trackerCancelRadiusDp = GestureConfig.DEFAULT_TRACKER_CANCEL_RADIUS_DP,
             trackerSensitivity = GestureConfig.DEFAULT_TRACKER_SENSITIVITY,
             trackerMaxSpeed = GestureConfig.DEFAULT_TRACKER_MAX_SPEED,
             trackerSmoothing = GestureConfig.DEFAULT_TRACKER_SMOOTHING,
@@ -395,6 +483,77 @@ private data class SettingsState(
             pointerColorGreen = GestureConfig.DEFAULT_POINTER_COLOR_GREEN,
             pointerColorBlue = GestureConfig.DEFAULT_POINTER_COLOR_BLUE
         )
+    }
+
+    companion object {
+        fun fromJsonString(text: String): SettingsState {
+            val json = JSONObject(text)
+            val actionsJson = json.optJSONObject("actionByKey") ?: json.optJSONObject("actions")
+            val actionByKey = buildMap {
+                GestureConfig.edges.forEach { edge ->
+                    GestureConfig.gestures.forEach { gesture ->
+                        val key = GestureConfig.actionKey(edge, gesture)
+                        val imported = actionsJson?.optString(key).orEmpty()
+                        put(
+                            key,
+                            imported.takeIf { it in GestureConfig.actionValues }
+                                ?: GestureConfig.defaultAction(edge, gesture)
+                        )
+                    }
+                }
+            }
+            val pointerStyle = json.optString(
+                "pointerControlStyle",
+                GestureConfig.DEFAULT_POINTER_CONTROL_STYLE
+            ).takeIf { it in GestureConfig.pointerStyleValues } ?: GestureConfig.DEFAULT_POINTER_CONTROL_STYLE
+
+            return SettingsState(
+                enabled = json.optBoolean("enabled", GestureConfig.DEFAULT_ENABLED),
+                edgeWidthDp = json.optInt("edgeWidthDp", GestureConfig.DEFAULT_EDGE_WIDTH_DP),
+                swipeDistanceDp = json.optInt("swipeDistanceDp", GestureConfig.DEFAULT_SWIPE_DISTANCE_DP),
+                triggerRegionStartPercent = json.optInt(
+                    "triggerRegionStartPercent",
+                    GestureConfig.DEFAULT_TRIGGER_REGION_START_PERCENT
+                ),
+                triggerRegionEndPercent = json.optInt(
+                    "triggerRegionEndPercent",
+                    GestureConfig.DEFAULT_TRIGGER_REGION_END_PERCENT
+                ),
+                swipeAngleDegrees = json.optInt("swipeAngleDegrees", GestureConfig.DEFAULT_SWIPE_ANGLE_DEGREES),
+                pointerRadiusDp = json.optInt("pointerRadiusDp", GestureConfig.DEFAULT_POINTER_RADIUS_DP),
+                pointerControlAlpha = json.optInt(
+                    "pointerControlAlpha",
+                    GestureConfig.DEFAULT_POINTER_CONTROL_ALPHA
+                ),
+                pointerSensitivity = json.optInt("pointerSensitivity", GestureConfig.DEFAULT_POINTER_SENSITIVITY),
+                pointerArrowDp = json.optInt("pointerArrowDp", GestureConfig.DEFAULT_POINTER_ARROW_DP),
+                pointerTouchAreaDp = json.optInt("pointerTouchAreaDp", GestureConfig.DEFAULT_POINTER_TOUCH_AREA_DP),
+                pointerLineDp = json.optInt("pointerLineDp", GestureConfig.DEFAULT_POINTER_LINE_DP),
+                pointerMarginDp = json.optInt("pointerMarginDp", GestureConfig.DEFAULT_POINTER_MARGIN_DP),
+                pointerCancelDistanceDp = json.optInt(
+                    "pointerCancelDistanceDp",
+                    GestureConfig.DEFAULT_POINTER_CANCEL_DISTANCE_DP
+                ),
+                pointerTimeoutMs = json.optInt("pointerTimeoutMs", GestureConfig.DEFAULT_POINTER_TIMEOUT_MS),
+                pointerSmoothing = json.optInt("pointerSmoothing", GestureConfig.DEFAULT_POINTER_SMOOTHING),
+                pointerMaxSpeed = json.optInt("pointerMaxSpeed", GestureConfig.DEFAULT_POINTER_MAX_SPEED),
+                pointerCurve = json.optInt("pointerCurve", GestureConfig.DEFAULT_POINTER_CURVE),
+                pointerControlStyle = pointerStyle,
+                trackerBallDp = json.optInt("trackerBallDp", GestureConfig.DEFAULT_TRACKER_BALL_DP),
+                trackerCursorDp = json.optInt("trackerCursorDp", GestureConfig.DEFAULT_TRACKER_CURSOR_DP),
+                trackerCancelRadiusDp = json.optInt(
+                    "trackerCancelRadiusDp",
+                    GestureConfig.DEFAULT_TRACKER_CANCEL_RADIUS_DP
+                ),
+                trackerSensitivity = json.optInt("trackerSensitivity", GestureConfig.DEFAULT_TRACKER_SENSITIVITY),
+                trackerMaxSpeed = json.optInt("trackerMaxSpeed", GestureConfig.DEFAULT_TRACKER_MAX_SPEED),
+                trackerSmoothing = json.optInt("trackerSmoothing", GestureConfig.DEFAULT_TRACKER_SMOOTHING),
+                pointerColorRed = json.optInt("pointerColorRed", GestureConfig.DEFAULT_POINTER_COLOR_RED),
+                pointerColorGreen = json.optInt("pointerColorGreen", GestureConfig.DEFAULT_POINTER_COLOR_GREEN),
+                pointerColorBlue = json.optInt("pointerColorBlue", GestureConfig.DEFAULT_POINTER_COLOR_BLUE),
+                actionByKey = actionByKey
+            )
+        }
     }
 }
 
@@ -444,6 +603,8 @@ private fun SettingsScreen(
     onSettingsChange: (SettingsState) -> Unit,
     onSave: () -> Unit,
     onReset: () -> Unit,
+    onExport: (Uri) -> Unit,
+    onImport: (Uri) -> Unit,
     hookStatus: HookStatus
 ) {
     val pages = remember {
@@ -456,13 +617,23 @@ private fun SettingsScreen(
     }
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val coroutineScope = rememberCoroutineScope()
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri?.let(onExport)
+    }
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let(onImport)
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text("MyEdgeGesture", fontWeight = FontWeight.SemiBold)
+                        Text("EdgeGesture", fontWeight = FontWeight.SemiBold)
                         Text(
                             text = if (settings.enabled) t("手势已启用", "Gestures enabled") else t("手势未启用", "Gestures disabled"),
                             style = MaterialTheme.typography.labelMedium,
@@ -471,6 +642,12 @@ private fun SettingsScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { importLauncher.launch(arrayOf("application/json", "text/*", "*/*")) }) {
+                        Icon(Icons.Rounded.Upload, contentDescription = t("导入配置", "Import config"))
+                    }
+                    IconButton(onClick = { exportLauncher.launch("EdgeGesture-config.json") }) {
+                        Icon(Icons.Rounded.Download, contentDescription = t("导出配置", "Export config"))
+                    }
                     IconButton(onClick = onReset) {
                         Icon(Icons.Rounded.Restore, contentDescription = t("恢复推荐值", "Restore recommended values"))
                     }
@@ -580,8 +757,8 @@ private fun OverviewPage(
     SettingsSection(t("说明", "Notes"), Icons.Rounded.Palette) {
         Text(
             text = t(
-                "启用 LSPosed 模块后建议重启。杀掉 App 不影响手势；App 只负责保存参数。需要排查时，在 LSPosed 日志里搜索 MyEdgeGesture。若调出时卡顿，优先降低控制圆透明度。",
-                "Reboot after enabling the LSPosed module. Killing the app does not stop gestures; the app only saves settings. Search MyEdgeGesture in LSPosed logs for troubleshooting. If the overlay stutters, lower the control circle opacity first."
+                "启用 LSPosed 模块后建议重启。杀掉 App 不影响手势；App 只负责保存参数。需要排查时，在 LSPosed 日志里搜索 EdgeGesture。若调出时卡顿，优先降低控制圆透明度。",
+                "Reboot after enabling the LSPosed module. Killing the app does not stop gestures; the app only saves settings. Search EdgeGesture in LSPosed logs for troubleshooting. If the overlay stutters, lower the control circle opacity first."
             ),
             modifier = Modifier.padding(16.dp),
             style = MaterialTheme.typography.bodyMedium,
@@ -712,7 +889,25 @@ private fun PointerPage(
     onSettingsChange: (SettingsState) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var subPage by remember { mutableStateOf(PointerSubPage.Line) }
+    var subPage by remember {
+        mutableStateOf(
+            if (settings.pointerControlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
+                PointerSubPage.Tracker
+            } else {
+                PointerSubPage.Line
+            }
+        )
+    }
+
+    LaunchedEffect(settings.pointerControlStyle) {
+        if (subPage != PointerSubPage.Appearance) {
+            subPage = if (settings.pointerControlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
+                PointerSubPage.Tracker
+            } else {
+                PointerSubPage.Line
+            }
+        }
+    }
 
     Column(
         modifier = modifier,
@@ -732,6 +927,7 @@ private fun PointerPage(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
                         .padding(horizontal = 16.dp, vertical = 10.dp)
                 ) {
                     FilterChip(
@@ -819,12 +1015,12 @@ private fun LinePointerPage(
 
     SettingsSection(t("直线高级", "Line Advanced"), Icons.Rounded.Settings) {
         SettingSlider(
-            title = t("松手取消距离", "Release Cancel Distance"),
-            valueText = "${settings.pointerCancelDistanceDp}dp",
-            description = t("直线太短时松手取消。", "Release is canceled when the line is too short."),
-            value = settings.pointerCancelDistanceDp,
-            range = 80..420,
-            onValueChange = { onSettingsChange(settings.copy(pointerCancelDistanceDp = it)) }
+            title = t("控制圆 / 取消圆", "Control / Cancel Circle"),
+            valueText = "${settings.pointerRadiusDp}dp",
+            description = t("指针或光标在这个圆内松手会取消点击。", "Release is canceled when the pointer or cursor is inside this circle."),
+            value = settings.pointerRadiusDp,
+            range = 48..320,
+            onValueChange = { onSettingsChange(settings.copy(pointerRadiusDp = it)) }
         )
         SettingSlider(
             title = t("自动取消时间", "Auto Cancel Time"),
@@ -866,6 +1062,17 @@ private fun TrackerPointerPage(
     settings: SettingsState,
     onSettingsChange: (SettingsState) -> Unit
 ) {
+    SettingsSection(t("控制圆 / 取消", "Control / Cancel"), Icons.Rounded.Settings) {
+        SettingSlider(
+            title = t("控制圆半径", "Control Circle Radius"),
+            valueText = "${settings.pointerRadiusDp}dp",
+            description = t("光标圆球在这个圆内松手会取消点击。", "Release is canceled when the cursor ball is inside this circle."),
+            value = settings.pointerRadiusDp,
+            range = 48..320,
+            onValueChange = { onSettingsChange(settings.copy(pointerRadiusDp = it)) }
+        )
+    }
+
     SettingsSection(t("摇杆光标", "Tracker Cursor"), Icons.Rounded.RadioButtonChecked) {
         SettingSlider(
             title = t("摇杆灵敏度", "Tracker Sensitivity"),
@@ -1259,12 +1466,6 @@ private fun PointerPreview(settings: SettingsState) {
                     val start = Offset(size.width, anchor.y)
                     val end = Offset(size.width * 0.34f, size.height * 0.28f)
                     drawArrow(start, end, settings.pointerArrowDp.dp.toPx(), color, stroke)
-                    drawCircle(
-                        color = Color(0xFFE24B4B).copy(alpha = 0.24f),
-                        radius = settings.pointerCancelDistanceDp.dp.toPx().coerceAtMost(size.width * 0.46f),
-                        center = anchor,
-                        style = Stroke(width = 1.dp.toPx())
-                    )
                 }
             }
         }

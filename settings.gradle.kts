@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "MyEdgeGesture"
+rootProject.name = "EdgeGesture"
 include(":app")

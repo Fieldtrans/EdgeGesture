@@ -6,9 +6,12 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.Rect
+import android.graphics.Shader
 import android.hardware.input.InputManager
 import android.os.Handler
 import android.os.Looper
@@ -43,7 +46,6 @@ object OneHandPointer {
         val arrowSize: Float,
         val lineWidth: Float,
         val trackerBallSize: Float,
-        val cancelDistance: Float,
         val touchArea: Float,
         val color: Int,
         val startupLineLength: Float,
@@ -51,6 +53,7 @@ object OneHandPointer {
         val maxFingerStep: Float,
         val maxPointerSpeed: Float,
         val notificationHotspotHeight: Float,
+        val notificationPreviewHeight: Float,
         val smoothing: Float,
         val controlStyle: String,
         val cursorStartX: Float,
@@ -71,7 +74,8 @@ object OneHandPointer {
         var lastFrameTimeNanos: Long = 0L,
         var timeoutRunnable: Runnable? = null,
         var notificationShadeRunnable: Runnable? = null,
-        var notificationShadeTriggered: Boolean = false
+        var notificationShadeTriggered: Boolean = false,
+        var notificationPreviewProgress: Float = 0f
     )
 
     fun isActive(): Boolean {
@@ -105,7 +109,6 @@ object OneHandPointer {
         val arrowSize = dp(context, RuntimeGestureConfig.pointerArrowDp.toFloat())
         val lineWidth = dp(context, RuntimeGestureConfig.pointerLineDp.toFloat())
         val trackerBallSize = dp(context, RuntimeGestureConfig.trackerBallDp.toFloat())
-        val cancelDistance = dp(context, RuntimeGestureConfig.pointerCancelDistanceDp.toFloat())
         val controlStyle = RuntimeGestureConfig.pointerControlStyle
         val touchArea = if (controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
             dp(context, RuntimeGestureConfig.trackerCursorDp.toFloat())
@@ -127,6 +130,7 @@ object OneHandPointer {
         val maxFingerStep = dp(context, MAX_FINGER_STEP_DP) * speedScale
         val maxPointerSpeed = bounds.second * speedScale
         val notificationHotspotHeight = notificationHotspotHeight(context, bounds.second)
+        val notificationPreviewHeight = notificationPreviewHeight(notificationHotspotHeight)
         val pointerColor = Color.rgb(
             RuntimeGestureConfig.pointerColorRed.coerceIn(0, 255),
             RuntimeGestureConfig.pointerColorGreen.coerceIn(0, 255),
@@ -164,7 +168,6 @@ object OneHandPointer {
             arrowSize = arrowSize,
             lineWidth = lineWidth,
             trackerBallSize = trackerBallSize,
-            cancelDistance = cancelDistance,
             touchArea = touchArea,
             color = pointerColor,
             startupLineLength = startupLineLength,
@@ -172,6 +175,7 @@ object OneHandPointer {
             maxFingerStep = maxFingerStep,
             maxPointerSpeed = maxPointerSpeed,
             notificationHotspotHeight = notificationHotspotHeight,
+            notificationPreviewHeight = notificationPreviewHeight,
             smoothing = smoothing,
             controlStyle = controlStyle,
             cursorStartX = initialPointer.first,
@@ -201,7 +205,8 @@ object OneHandPointer {
             pointerColor,
             newSession.pointerX,
             newSession.pointerY,
-            newSession.controlStyle
+            newSession.controlStyle,
+            newSession.notificationPreviewProgress
         )
         scheduleTimeout(newSession)
         updateNotificationShadeHold(newSession)
@@ -279,7 +284,8 @@ object OneHandPointer {
                 current.color,
                 current.pointerX,
                 current.pointerY,
-                current.controlStyle
+                current.controlStyle,
+                current.notificationPreviewProgress
             )
             DebugLog.info("pointer control origin set x=$fingerX y=$fingerY")
             return
@@ -453,7 +459,8 @@ object OneHandPointer {
                 current.color,
                 current.pointerX,
                 current.pointerY,
-                current.controlStyle
+                current.controlStyle,
+                current.notificationPreviewProgress
             )
             updateNotificationShadeHold(current)
             return false
@@ -484,7 +491,8 @@ object OneHandPointer {
             current.color,
             current.pointerX,
             current.pointerY,
-            current.controlStyle
+            current.controlStyle,
+            current.notificationPreviewProgress
         )
         updateNotificationShadeHold(current)
         return true
@@ -541,32 +549,24 @@ object OneHandPointer {
     private fun updateNotificationShadeHold(current: Session) {
         if (current.notificationShadeTriggered) return
 
+        updateNotificationPreview(current)
+
         if (!isInsideNotificationHotspot(current)) {
             cancelNotificationShadeHold(current)
             return
         }
 
-        if (current.notificationShadeRunnable != null) return
-
-        val runnable = Runnable {
-            if (session !== current || current.notificationShadeTriggered) return@Runnable
-            current.notificationShadeRunnable = null
-            if (!isInsideNotificationHotspot(current)) return@Runnable
-
-            current.notificationShadeTriggered = true
+        current.notificationShadeTriggered = true
+        cancelNotificationShadeHold(current)
+        postToMain {
+            if (session !== current) return@postToMain
             cancelTimeout(current)
             current.overlay.dismiss()
             session = null
 
             val expanded = expandNotificationShade(current.context)
-            DebugLog.info("notification shade hold triggered expanded=$expanded")
+            DebugLog.info("notification shade top hit triggered expanded=$expanded")
         }
-
-        current.notificationShadeRunnable = runnable
-        postToMain {
-            mainHandler?.postDelayed(runnable, NOTIFICATION_SHADE_HOLD_MS)
-        }
-        DebugLog.info("notification shade hold started")
     }
 
     private fun cancelNotificationShadeHold(current: Session) {
@@ -580,6 +580,41 @@ object OneHandPointer {
         return current.pointerY <= current.notificationHotspotHeight &&
                 current.pointerX >= 0f &&
                 current.pointerX <= current.width
+    }
+
+    private fun updateNotificationPreview(current: Session) {
+        val progress = notificationPreviewProgress(current)
+        if (progress == current.notificationPreviewProgress) return
+
+        current.notificationPreviewProgress = progress
+        current.overlay.moveTo(
+            current.anchorX,
+            current.anchorY,
+            current.controlRadius,
+            current.controlAlpha,
+            current.arrowSize,
+            current.lineWidth,
+            current.trackerBallSize,
+            current.touchArea,
+            current.color,
+            current.pointerX,
+            current.pointerY,
+            current.controlStyle,
+            current.notificationPreviewProgress
+        )
+    }
+
+    private fun notificationPreviewProgress(current: Session): Float {
+        if (current.pointerX < 0f || current.pointerX > current.width) return 0f
+        if (current.pointerY > current.notificationPreviewHeight) return 0f
+
+        val previewSpan = (current.notificationPreviewHeight - current.notificationHotspotHeight).coerceAtLeast(1f)
+        val progress = if (current.pointerY <= current.notificationHotspotHeight) {
+            1f
+        } else {
+            1f - ((current.pointerY - current.notificationHotspotHeight) / previewSpan)
+        }
+        return progress.coerceIn(NOTIFICATION_PREVIEW_MIN_PROGRESS, 1f)
     }
 
     private fun expandNotificationShade(context: Context): Boolean {
@@ -611,28 +646,17 @@ object OneHandPointer {
             .coerceIn(minHeight, maxHeight)
     }
 
-    private fun shouldCancelClick(current: Session): Boolean {
-        if (current.controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
-            return lineLength(current) <= trackerCancelRadius(current)
-        }
-
-        val length = lineLength(current)
-        return length <= current.controlRadius || length < current.cancelDistance
+    private fun notificationPreviewHeight(hotspotHeight: Float): Float {
+        return hotspotHeight * NOTIFICATION_PREVIEW_HEIGHT_MULTIPLIER
     }
 
-    private fun trackerCancelRadius(current: Session): Float {
-        return max(current.controlRadius, current.trackerBallSize + current.touchArea)
+    private fun shouldCancelClick(current: Session): Boolean {
+        return lineLength(current) <= current.controlRadius
     }
 
     private fun lineLength(current: Session): Float {
         val dx = current.pointerX - current.anchorX
         val dy = current.pointerY - current.anchorY
-        return sqrt(dx * dx + dy * dy)
-    }
-
-    private fun cursorMoveLength(current: Session): Float {
-        val dx = current.pointerX - current.cursorStartX
-        val dy = current.pointerY - current.cursorStartY
         return sqrt(dx * dx + dy * dy)
     }
 
@@ -653,7 +677,7 @@ object OneHandPointer {
                 DebugLog.info("tap injected down=$downInjected move=$moveInjected up=$upInjected x=$x y=$y")
             }
         } catch (t: Throwable) {
-            XposedBridge.log("MyEdgeGesture: injectTap failed: ${t.message}")
+            XposedBridge.log("EdgeGesture: injectTap failed: ${t.message}")
         } finally {
             downEvent.recycle()
             moveEvent.recycle()
@@ -783,6 +807,7 @@ object OneHandPointer {
         private var pendingX = 0f
         private var pendingY = 0f
         private var pendingStyle = GestureConfig.POINTER_STYLE_LINE_ARROW
+        private var pendingNotificationPreviewProgress = 0f
         private var pendingUpdatePosted = false
 
         private val screenBounds = run {
@@ -816,7 +841,8 @@ object OneHandPointer {
             color: Int,
             x: Float,
             y: Float,
-            style: String
+            style: String,
+            notificationPreviewProgress: Float
         ) {
             postToMain {
                 try {
@@ -824,10 +850,24 @@ object OneHandPointer {
                     params.y = 0
                     windowManager.addView(view, params)
                     shown = true
-                    view.update(anchorX, anchorY, radius, controlAlpha, arrowSize, lineWidth, trackerBallSize, touchArea, color, x, y, style)
+                    view.update(
+                        anchorX,
+                        anchorY,
+                        radius,
+                        controlAlpha,
+                        arrowSize,
+                        lineWidth,
+                        trackerBallSize,
+                        touchArea,
+                        color,
+                        x,
+                        y,
+                        style,
+                        notificationPreviewProgress
+                    )
                     DebugLog.info("overlay added")
                 } catch (t: Throwable) {
-                    XposedBridge.log("MyEdgeGesture: show overlay failed: ${t.message}")
+                    XposedBridge.log("EdgeGesture: show overlay failed: ${t.message}")
                 }
             }
         }
@@ -844,7 +884,8 @@ object OneHandPointer {
             color: Int,
             x: Float,
             y: Float,
-            style: String
+            style: String,
+            notificationPreviewProgress: Float
         ) {
             pendingAnchorX = anchorX
             pendingAnchorY = anchorY
@@ -858,6 +899,7 @@ object OneHandPointer {
             pendingX = x
             pendingY = y
             pendingStyle = style
+            pendingNotificationPreviewProgress = notificationPreviewProgress
             runOnMainForFrame { applyPendingUpdate() }
         }
 
@@ -891,7 +933,8 @@ object OneHandPointer {
                     pendingColor,
                     pendingX,
                     pendingY,
-                    pendingStyle
+                    pendingStyle,
+                    pendingNotificationPreviewProgress
                 )
             } catch (t: Throwable) {
                 DebugLog.info("move overlay failed: ${t.message}")
@@ -930,6 +973,7 @@ object OneHandPointer {
             private var pointerX = 0f
             private var pointerY = 0f
             private var style = GestureConfig.POINTER_STYLE_LINE_ARROW
+            private var notificationPreviewProgress = 0f
             private var visualStartX = 0f
             private var visualStartY = 0f
             private var hasDirtyBounds = false
@@ -963,6 +1007,11 @@ object OneHandPointer {
                 style = Paint.Style.STROKE
                 strokeWidth = dp(2f)
             }
+            private val notificationArrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.FILL
+            }
+            private val notificationArrowPath = Path()
+
             fun update(
                 anchorX: Float,
                 anchorY: Float,
@@ -975,9 +1024,11 @@ object OneHandPointer {
                 color: Int,
                 pointerX: Float,
                 pointerY: Float,
-                style: String
+                style: String,
+                notificationPreviewProgress: Float
             ) {
                 val newControlAlpha = controlAlpha.coerceIn(0, 255)
+                val newNotificationPreviewProgress = notificationPreviewProgress.coerceIn(0f, 1f)
                 val pointerMoveX = pointerX - this.pointerX
                 val pointerMoveY = pointerY - this.pointerY
                 val anchorMoveX = anchorX - this.anchorX
@@ -997,6 +1048,7 @@ object OneHandPointer {
                         this.arrowSize != arrowSize ||
                         this.trackerBallSize != trackerBallSize ||
                         this.style != style ||
+                        this.notificationPreviewProgress != newNotificationPreviewProgress ||
                         linePaint.strokeWidth != lineWidth ||
                         linePaint.color != color
 
@@ -1016,6 +1068,7 @@ object OneHandPointer {
                 this.trackerBallSize = trackerBallSize
                 this.touchArea = touchArea
                 this.style = style
+                this.notificationPreviewProgress = newNotificationPreviewProgress
                 linePaint.strokeWidth = lineWidth
                 linePaint.color = color
                 cursorPaint.color = color
@@ -1050,10 +1103,12 @@ object OneHandPointer {
             override fun onDraw(canvas: Canvas) {
                 super.onDraw(canvas)
 
-                if (controlAlpha > 0) {
-                    if (style == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
-                        drawTracker(canvas)
-                    } else if (circleIntersectsClip(canvas, anchorX, anchorY, controlRadius)) {
+                drawNotificationPreview(canvas)
+
+                if (style == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
+                    drawTracker(canvas)
+                } else {
+                    if (controlAlpha > 0 && circleIntersectsClip(canvas, anchorX, anchorY, controlRadius)) {
                         canvas.drawCircle(anchorX, anchorY, controlRadius, controlPaint)
                     }
                 }
@@ -1064,9 +1119,74 @@ object OneHandPointer {
                 }
             }
 
+            private fun drawNotificationPreview(canvas: Canvas) {
+                if (notificationPreviewProgress <= 0f) return
+
+                val viewWidth = drawingWidth().toFloat()
+                val cx = viewWidth / 2f
+                val progress = notificationPreviewProgress.coerceIn(0f, 1f)
+                val top = notificationPreviewSafeTop()
+                val arrowHeight = dp(20f) + dp(12f) * progress
+                val arrowWidth = dp(18f) + dp(10f) * progress
+                val shaftWidth = dp(4f) + dp(2f) * progress
+                val shaftBottom = top + arrowHeight * 0.56f
+                val tipY = top + arrowHeight
+                val startColor = Color.argb(
+                    (28 + 72 * progress).toInt().coerceIn(0, 100),
+                    Color.red(linePaint.color),
+                    Color.green(linePaint.color),
+                    Color.blue(linePaint.color)
+                )
+                val endColor = Color.argb(
+                    (95 + 105 * progress).toInt().coerceIn(0, 200),
+                    Color.red(linePaint.color),
+                    Color.green(linePaint.color),
+                    Color.blue(linePaint.color)
+                )
+
+                notificationArrowPath.reset()
+                notificationArrowPath.moveTo(cx - shaftWidth / 2f, top)
+                notificationArrowPath.lineTo(cx + shaftWidth / 2f, top)
+                notificationArrowPath.lineTo(cx + shaftWidth / 2f, shaftBottom)
+                notificationArrowPath.lineTo(cx + arrowWidth / 2f, shaftBottom)
+                notificationArrowPath.lineTo(cx, tipY)
+                notificationArrowPath.lineTo(cx - arrowWidth / 2f, shaftBottom)
+                notificationArrowPath.lineTo(cx - shaftWidth / 2f, shaftBottom)
+                notificationArrowPath.close()
+
+                notificationArrowPaint.shader = LinearGradient(
+                    cx,
+                    top,
+                    cx,
+                    tipY,
+                    startColor,
+                    endColor,
+                    Shader.TileMode.CLAMP
+                )
+                canvas.drawPath(notificationArrowPath, notificationArrowPaint)
+                notificationArrowPaint.shader = null
+            }
+
+            private fun notificationPreviewSafeTop(): Float {
+                val cutoutTop = rootWindowInsets?.displayCutout?.safeInsetTop?.toFloat() ?: 0f
+                val statusTop = androidStatusBarHeight()
+                return max(max(cutoutTop, statusTop) - dp(24f), dp(4f))
+            }
+
+            private fun androidStatusBarHeight(): Float {
+                val id = resources.getIdentifier("status_bar_height", "dimen", "android")
+                return if (id > 0) {
+                    resources.getDimensionPixelSize(id).toFloat()
+                } else {
+                    dp(30f)
+                }
+            }
+
             private fun drawTracker(canvas: Canvas) {
-                if (circleIntersectsClip(canvas, anchorX, anchorY, controlRadius)) {
+                if (controlAlpha > 0 && circleIntersectsClip(canvas, anchorX, anchorY, controlRadius)) {
                     canvas.drawCircle(anchorX, anchorY, controlRadius, controlPaint)
+                }
+                if (circleIntersectsClip(canvas, anchorX, anchorY, trackerBallSize)) {
                     canvas.drawCircle(anchorX, anchorY, max(trackerBallSize / 2f, dp(3f)), linePaint)
                 }
             }
@@ -1180,6 +1300,14 @@ object OneHandPointer {
                     top = minOf(top, anchorY - radius - controlPad)
                     right = maxOf(right, anchorX + radius + controlPad)
                     bottom = maxOf(bottom, anchorY + radius + controlPad)
+                }
+
+                if (notificationPreviewProgress > 0f) {
+                    val previewHeight = notificationPreviewSafeTop() + dp(46f)
+                    left = minOf(left, 0f)
+                    top = minOf(top, 0f)
+                    right = maxOf(right, viewWidth.toFloat())
+                    bottom = maxOf(bottom, previewHeight)
                 }
 
                 newDirtyLeft = left.toInt().coerceIn(0, viewWidth)
@@ -1331,9 +1459,10 @@ object OneHandPointer {
     private const val TRACKER_CURSOR_START_X_FROM_RIGHT = 0.44f
     private const val TRACKER_CURSOR_START_X_FROM_LEFT = 0.56f
     private const val TRACKER_CURSOR_START_Y = 0.38f
-    private const val NOTIFICATION_SHADE_HOLD_MS = 2_000L
-    private const val NOTIFICATION_HOTSPOT_SCREEN_FRACTION = 0.085f
-    private const val NOTIFICATION_HOTSPOT_MIN_DP = 72f
-    private const val NOTIFICATION_HOTSPOT_MAX_DP = 120f
+    private const val NOTIFICATION_HOTSPOT_SCREEN_FRACTION = 0.008f
+    private const val NOTIFICATION_HOTSPOT_MIN_DP = 4f
+    private const val NOTIFICATION_HOTSPOT_MAX_DP = 12f
+    private const val NOTIFICATION_PREVIEW_HEIGHT_MULTIPLIER = 8.0f
+    private const val NOTIFICATION_PREVIEW_MIN_PROGRESS = 0.12f
     private const val FRAME_FALLBACK_DELAY_MS = 8L
 }

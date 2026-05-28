@@ -26,6 +26,7 @@ object RuntimeGestureConfig {
     @Volatile var pointerControlStyle: String = GestureConfig.DEFAULT_POINTER_CONTROL_STYLE
     @Volatile var trackerBallDp: Int = GestureConfig.DEFAULT_TRACKER_BALL_DP
     @Volatile var trackerCursorDp: Int = GestureConfig.DEFAULT_TRACKER_CURSOR_DP
+    @Volatile var trackerCancelRadiusDp: Int = GestureConfig.DEFAULT_TRACKER_CANCEL_RADIUS_DP
     @Volatile var trackerSensitivity: Int = GestureConfig.DEFAULT_TRACKER_SENSITIVITY
     @Volatile var trackerMaxSpeed: Int = GestureConfig.DEFAULT_TRACKER_MAX_SPEED
     @Volatile var trackerSmoothing: Int = GestureConfig.DEFAULT_TRACKER_SMOOTHING
@@ -75,6 +76,7 @@ object RuntimeGestureConfig {
             ?: pointerControlStyle
         trackerBallDp = intent.getIntExtra(GestureConfig.KEY_TRACKER_BALL_DP, trackerBallDp)
         trackerCursorDp = intent.getIntExtra(GestureConfig.KEY_TRACKER_CURSOR_DP, trackerCursorDp)
+        trackerCancelRadiusDp = intent.getIntExtra(GestureConfig.KEY_TRACKER_CANCEL_RADIUS_DP, trackerCancelRadiusDp)
         trackerSensitivity = intent.getIntExtra(GestureConfig.KEY_TRACKER_SENSITIVITY, trackerSensitivity)
         trackerMaxSpeed = intent.getIntExtra(GestureConfig.KEY_TRACKER_MAX_SPEED, trackerMaxSpeed)
         trackerSmoothing = intent.getIntExtra(GestureConfig.KEY_TRACKER_SMOOTHING, trackerSmoothing)
@@ -121,6 +123,7 @@ object RuntimeGestureConfig {
             ?: GestureConfig.DEFAULT_POINTER_CONTROL_STYLE
         trackerBallDp = prefs.getInt(GestureConfig.KEY_TRACKER_BALL_DP, trackerBallDp)
         trackerCursorDp = prefs.getInt(GestureConfig.KEY_TRACKER_CURSOR_DP, trackerCursorDp)
+        trackerCancelRadiusDp = prefs.getInt(GestureConfig.KEY_TRACKER_CANCEL_RADIUS_DP, trackerCancelRadiusDp)
         trackerSensitivity = prefs.getInt(GestureConfig.KEY_TRACKER_SENSITIVITY, trackerSensitivity)
         trackerMaxSpeed = prefs.getInt(GestureConfig.KEY_TRACKER_MAX_SPEED, trackerMaxSpeed)
         trackerSmoothing = prefs.getInt(GestureConfig.KEY_TRACKER_SMOOTHING, trackerSmoothing)

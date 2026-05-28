@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">MyEdgeGesture</string>
+    <string name="app_name">EdgeGesture</string>
     <string-array name="gesture_action_labels">
         <item>No Action</item>
         <item>Back</item>

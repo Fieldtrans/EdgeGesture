@@ -28,6 +28,7 @@ object GestureConfig {
     const val KEY_POINTER_CONTROL_STYLE = "pointer_control_style"
     const val KEY_TRACKER_BALL_DP = "tracker_ball_dp"
     const val KEY_TRACKER_CURSOR_DP = "tracker_cursor_dp"
+    const val KEY_TRACKER_CANCEL_RADIUS_DP = "tracker_cancel_radius_dp"
     const val KEY_TRACKER_SENSITIVITY = "tracker_sensitivity"
     const val KEY_TRACKER_MAX_SPEED = "tracker_max_speed"
     const val KEY_TRACKER_SMOOTHING = "tracker_smoothing"
@@ -72,6 +73,7 @@ object GestureConfig {
     const val DEFAULT_POINTER_CONTROL_STYLE = POINTER_STYLE_LINE_ARROW
     const val DEFAULT_TRACKER_BALL_DP = 10
     const val DEFAULT_TRACKER_CURSOR_DP = 20
+    const val DEFAULT_TRACKER_CANCEL_RADIUS_DP = 120
     const val DEFAULT_TRACKER_SENSITIVITY = 100
     const val DEFAULT_TRACKER_MAX_SPEED = 200
     const val DEFAULT_TRACKER_SMOOTHING = 30
@@ -150,6 +152,7 @@ object GestureConfig {
         pointerControlStyle: String,
         trackerBallDp: Int,
         trackerCursorDp: Int,
+        trackerCancelRadiusDp: Int,
         trackerSensitivity: Int,
         trackerMaxSpeed: Int,
         trackerSmoothing: Int,
@@ -180,6 +183,7 @@ object GestureConfig {
         intent.putExtra(KEY_POINTER_CONTROL_STYLE, pointerControlStyle)
         intent.putExtra(KEY_TRACKER_BALL_DP, trackerBallDp)
         intent.putExtra(KEY_TRACKER_CURSOR_DP, trackerCursorDp)
+        intent.putExtra(KEY_TRACKER_CANCEL_RADIUS_DP, trackerCancelRadiusDp)
         intent.putExtra(KEY_TRACKER_SENSITIVITY, trackerSensitivity)
         intent.putExtra(KEY_TRACKER_MAX_SPEED, trackerMaxSpeed)
         intent.putExtra(KEY_TRACKER_SMOOTHING, trackerSmoothing)

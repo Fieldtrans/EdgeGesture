@@ -20,7 +20,7 @@ import java.lang.reflect.Proxy
 class MainHook : IXposedHookLoadPackage {
 
     companion object {
-        private const val TAG = "MyEdgeGesture"
+        private const val TAG = "EdgeGesture"
         private const val MAX_HELD_TOUCH_EVENTS = 32
     }
 

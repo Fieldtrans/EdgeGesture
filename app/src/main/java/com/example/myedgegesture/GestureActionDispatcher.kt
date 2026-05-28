@@ -65,9 +65,9 @@ object GestureActionDispatcher {
                     injectMethod.invoke(inputManager, event, 0)
                 }
             }
-            XposedBridge.log("MyEdgeGesture: action -> $actionName")
+            XposedBridge.log("EdgeGesture: action -> $actionName")
         } catch (t: Throwable) {
-            XposedBridge.log("MyEdgeGesture: injectSystemKey failed: ${t.message}")
+            XposedBridge.log("EdgeGesture: injectSystemKey failed: ${t.message}")
         }
     }
 }

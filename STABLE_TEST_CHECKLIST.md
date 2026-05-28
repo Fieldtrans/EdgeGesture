@@ -1,4 +1,4 @@
-# MyEdgeGesture 1.0-beta1 Test Checklist
+# EdgeGesture 1.0 Test Checklist
 
 ## 测试前
 
@@ -28,5 +28,5 @@
 
 - 没反应：先确认 LSPosed 已启用并重启。
 - 重启后失效：打开 App 点“立即保存并同步”，再重启测试。
-- 点击失效：在 LSPosed 日志中搜索 `MyEdgeGesture`，复现一次后导出日志分析。
+- 点击失效：在 LSPosed 日志中搜索 `EdgeGesture`，复现一次后导出日志分析。
 - 系统返回卡住：降低边缘宽度，确认没有启用透明触摸层旧代码。

@@ -1,10 +1,10 @@
-# MyEdgeGesture
+# EdgeGesture
 
 [中文](#中文) | [English](#english)
 
 ## 中文
 
-MyEdgeGesture 是一个 LSPosed/Xposed 单手边缘手势模块。
+EdgeGesture 是一个 LSPosed/Xposed 单手边缘手势模块。
 
 App 本身只是设置面板。真正的手势监听运行在模块注入的 `system_server` 中，所以模块加载后，即使杀掉 App 进程，手势也应该继续可用。
 
@@ -15,7 +15,7 @@ App 本身只是设置面板。真正的手势监听运行在模块注入的 `sy
 - Tracker + Cursor 摇杆光标模式。
 - 可调触发区域、指针速度、平滑度、颜色、自动取消时间和取消距离。
 - Compose + Material 3 设置界面。
-- 日志输出到 LSPosed，标签为 `MyEdgeGesture`。
+- 日志输出到 LSPosed，标签为 `EdgeGesture`。
 
 ### 使用要求
 
@@ -45,11 +45,11 @@ app/build/outputs/apk/release/app-release.apk
 4. 重启手机。
 5. 打开 App 并启用手势。
 
-如果需要排查问题，请在 LSPosed 日志中搜索 `MyEdgeGesture`。
+如果需要排查问题，请在 LSPosed 日志中搜索 `EdgeGesture`。
 
 ### 当前状态
 
-当前版本：`1.0-beta1`。
+当前版本：`1.0`。
 
 这是测试版模块，会 hook `system_server` 的输入处理逻辑，请谨慎使用。
 
@@ -59,7 +59,7 @@ app/build/outputs/apk/release/app-release.apk
 
 ## English
 
-MyEdgeGesture is an LSPosed/Xposed one-handed edge gesture module.
+EdgeGesture is an LSPosed/Xposed one-handed edge gesture module.
 
 The app itself is only a settings panel. Gesture monitoring runs inside `system_server` through the injected module, so gestures should keep working after the module is loaded even if the app process is killed.
 
@@ -70,7 +70,7 @@ The app itself is only a settings panel. Gesture monitoring runs inside `system_
 - Tracker + Cursor mode.
 - Adjustable trigger area, pointer speed, smoothing, color, auto-cancel timeout, and cancel distance.
 - Compose + Material 3 settings UI.
-- Logs are written to LSPosed with the `MyEdgeGesture` tag.
+- Logs are written to LSPosed with the `EdgeGesture` tag.
 
 ### Requirements
 
@@ -100,11 +100,11 @@ For easier local testing, the current release build temporarily uses the debug s
 4. Reboot the phone.
 5. Open the app and enable gestures.
 
-For troubleshooting, search for `MyEdgeGesture` in LSPosed logs.
+For troubleshooting, search for `EdgeGesture` in LSPosed logs.
 
 ### Status
 
-Current version: `1.0-beta1`.
+Current version: `1.0`.
 
 This is a beta module that hooks the input handling path in `system_server`; use it carefully.
 
