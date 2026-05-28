@@ -80,6 +80,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -115,7 +116,7 @@ class MainActivity : ComponentActivity() {
                     onReset = {
                         settings = settings.withRecommendedValues()
                         saveConfig(settings, showToast = false)
-                        Toast.makeText(this, "已恢复推荐值", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, t("已恢复推荐值", "Recommended values restored"), Toast.LENGTH_SHORT).show()
                     },
                     hookStatus = readHookStatus()
                 )
@@ -252,7 +253,7 @@ class MainActivity : ComponentActivity() {
         sendBroadcast(intent)
 
         if (showToast) {
-            Toast.makeText(this, "设置已保存", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, t("设置已保存", "Settings saved"), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -313,12 +314,16 @@ class MainActivity : ComponentActivity() {
         val startedAt = prefs.getLong(GestureConfig.KEY_STATUS_STARTED_AT, 0L)
         val message = prefs.getString(GestureConfig.KEY_STATUS_LAST_MESSAGE, "") ?: ""
         return when {
-            startedAt > 0L -> HookStatus("输入过滤器已启动 / $message", true)
-            loadedAt > 0L -> HookStatus("system_server 已加载，等待输入过滤器", true)
-            moduleLoadedInApp -> HookStatus("LSPosed 已加载模块", true)
-            else -> HookStatus("未检测到加载；启用 LSPosed 后需重启", false)
+            startedAt > 0L -> HookStatus(t("输入过滤器已启动 / $message", "Input filter started / $message"), true)
+            loadedAt > 0L -> HookStatus(t("system_server 已加载，等待输入过滤器", "system_server loaded, waiting for input filter"), true)
+            moduleLoadedInApp -> HookStatus(t("LSPosed 已加载模块", "LSPosed module loaded"), true)
+            else -> HookStatus(t("未检测到加载；启用 LSPosed 后需重启", "Module not detected; reboot after enabling it in LSPosed"), false)
         }
     }
+}
+
+private fun t(zh: String, en: String): String {
+    return if (Locale.getDefault().language.lowercase(Locale.ROOT) == "zh") zh else en
 }
 
 private data class SettingsState(
@@ -443,10 +448,10 @@ private fun SettingsScreen(
 ) {
     val pages = remember {
         listOf(
-            SettingsPage("总览", Icons.Rounded.Settings),
-            SettingsPage("触发", Icons.Rounded.TouchApp),
-            SettingsPage("指针", Icons.Rounded.RadioButtonChecked),
-            SettingsPage("动作", Icons.Rounded.AccountTree)
+            SettingsPage(t("总览", "Overview"), Icons.Rounded.Settings),
+            SettingsPage(t("触发", "Trigger"), Icons.Rounded.TouchApp),
+            SettingsPage(t("指针", "Pointer"), Icons.Rounded.RadioButtonChecked),
+            SettingsPage(t("动作", "Actions"), Icons.Rounded.AccountTree)
         )
     }
     val pagerState = rememberPagerState(pageCount = { pages.size })
@@ -459,7 +464,7 @@ private fun SettingsScreen(
                     Column {
                         Text("MyEdgeGesture", fontWeight = FontWeight.SemiBold)
                         Text(
-                            text = if (settings.enabled) "手势已启用" else "手势未启用",
+                            text = if (settings.enabled) t("手势已启用", "Gestures enabled") else t("手势未启用", "Gestures disabled"),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -467,10 +472,10 @@ private fun SettingsScreen(
                 },
                 actions = {
                     IconButton(onClick = onReset) {
-                        Icon(Icons.Rounded.Restore, contentDescription = "恢复推荐值")
+                        Icon(Icons.Rounded.Restore, contentDescription = t("恢复推荐值", "Restore recommended values"))
                     }
                     IconButton(onClick = onSave) {
-                        Icon(Icons.Rounded.Save, contentDescription = "保存设置")
+                        Icon(Icons.Rounded.Save, contentDescription = t("保存设置", "Save settings"))
                     }
                 }
             )
@@ -550,31 +555,34 @@ private fun OverviewPage(
     StatusCard(settings, hookStatus, onSettingsChange)
 
     SettingsSection(
-        title = "当前模式",
+        title = t("当前模式", "Current Mode"),
         icon = Icons.Rounded.PowerSettingsNew
     ) {
         ModeSelector(settings, onSettingsChange)
         SettingSlider(
-            title = "触发边缘宽度",
+            title = t("触发边缘宽度", "Trigger Edge Width"),
             valueText = "${settings.edgeWidthDp}dp",
-            description = "越宽越容易触发，也越容易靠近系统侧滑区域。",
+            description = t("越宽越容易触发，也越容易靠近系统侧滑区域。", "Wider is easier to trigger, but closer to the system back gesture area."),
             value = settings.edgeWidthDp,
             range = 8..56,
             onValueChange = { onSettingsChange(settings.copy(edgeWidthDp = it)) }
         )
         SettingSlider(
-            title = "直线箭头灵敏度",
+            title = t("直线箭头灵敏度", "Line Arrow Sensitivity"),
             valueText = "${settings.pointerSensitivity}%",
-            description = "影响直线箭头模式下手指移动到指针移动的比例。",
+            description = t("影响直线箭头模式下手指移动到指针移动的比例。", "Controls the finger-to-pointer movement ratio in line arrow mode."),
             value = settings.pointerSensitivity,
             range = 40..180,
             onValueChange = { onSettingsChange(settings.copy(pointerSensitivity = it)) }
         )
     }
 
-    SettingsSection("说明", Icons.Rounded.Palette) {
+    SettingsSection(t("说明", "Notes"), Icons.Rounded.Palette) {
         Text(
-            text = "启用 LSPosed 模块后建议重启。杀掉 App 不影响手势；App 只负责保存参数。需要排查时，在 LSPosed 日志里搜索 MyEdgeGesture。若调出时卡顿，优先降低控制圆透明度。",
+            text = t(
+                "启用 LSPosed 模块后建议重启。杀掉 App 不影响手势；App 只负责保存参数。需要排查时，在 LSPosed 日志里搜索 MyEdgeGesture。若调出时卡顿，优先降低控制圆透明度。",
+                "Reboot after enabling the LSPosed module. Killing the app does not stop gestures; the app only saves settings. Search MyEdgeGesture in LSPosed logs for troubleshooting. If the overlay stutters, lower the control circle opacity first."
+            ),
             modifier = Modifier.padding(16.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -611,7 +619,7 @@ private fun StatusCard(
                         )
                 )
                 Column(Modifier.weight(1f)) {
-                    Text("模块状态", style = MaterialTheme.typography.labelLarge)
+                    Text(t("模块状态", "Module Status"), style = MaterialTheme.typography.labelLarge)
                     Text(
                         hookStatus.text,
                         style = MaterialTheme.typography.bodyMedium,
@@ -620,8 +628,8 @@ private fun StatusCard(
                 }
             }
             SettingSwitch(
-                title = "启用模块手势",
-                description = "关闭后不处理边缘上划。",
+                title = t("启用模块手势", "Enable Module Gestures"),
+                description = t("关闭后不处理边缘上划。", "When disabled, edge swipe-up will not be handled."),
                 checked = settings.enabled,
                 onCheckedChange = { onSettingsChange(settings.copy(enabled = it)) }
             )
@@ -648,46 +656,46 @@ private fun TriggerPage(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            SettingsSection("触发区域", Icons.Rounded.TouchApp) {
+            SettingsSection(t("触发区域", "Trigger Area"), Icons.Rounded.TouchApp) {
                 SettingSlider(
-                    title = "区域起点",
+                    title = t("区域起点", "Area Start"),
                     valueText = "${settings.triggerRegionStartPercent}%",
-                    description = "从屏幕上方开始计算。",
+                    description = t("从屏幕上方开始计算。", "Measured from the top of the screen."),
                     value = settings.triggerRegionStartPercent,
                     range = 0..100,
                     onValueChange = { onSettingsChange(settings.copy(triggerRegionStartPercent = it)) }
                 )
                 SettingSlider(
-                    title = "区域终点",
+                    title = t("区域终点", "Area End"),
                     valueText = "${settings.triggerRegionEndPercent}%",
-                    description = "区域终点可以低于起点，内部会自动取有效范围。",
+                    description = t("区域终点可以低于起点，内部会自动取有效范围。", "The end can be lower than the start; the valid range is normalized automatically."),
                     value = settings.triggerRegionEndPercent,
                     range = 0..100,
                     onValueChange = { onSettingsChange(settings.copy(triggerRegionEndPercent = it)) }
                 )
                 SettingSlider(
-                    title = "边缘宽度",
+                    title = t("边缘宽度", "Edge Width"),
                     valueText = "${settings.edgeWidthDp}dp",
-                    description = "推荐先保持 18dp 左右，避免系统返回冲突。",
+                    description = t("推荐先保持 18dp 左右，避免系统返回冲突。", "Start around 18dp to avoid conflicts with the system back gesture."),
                     value = settings.edgeWidthDp,
                     range = 8..56,
                     onValueChange = { onSettingsChange(settings.copy(edgeWidthDp = it)) }
                 )
             }
 
-            SettingsSection("高级触发", Icons.Rounded.Tune) {
+            SettingsSection(t("高级触发", "Advanced Trigger"), Icons.Rounded.Tune) {
                 SettingSlider(
-                    title = "上划触发距离",
+                    title = t("上划触发距离", "Swipe-Up Distance"),
                     valueText = "${settings.swipeDistanceDp}dp",
-                    description = "距离越大，越不容易误触。",
+                    description = t("距离越大，越不容易误触。", "A longer distance reduces accidental triggers."),
                     value = settings.swipeDistanceDp,
                     range = 40..180,
                     onValueChange = { onSettingsChange(settings.copy(swipeDistanceDp = it)) }
                 )
                 SettingSlider(
-                    title = "方向允许偏角",
+                    title = t("方向允许偏角", "Allowed Angle"),
                     valueText = "±${settings.swipeAngleDegrees}°",
-                    description = "越小越严格，越不容易和横向侧滑混淆。",
+                    description = t("越小越严格，越不容易和横向侧滑混淆。", "Smaller values are stricter and reduce horizontal gesture conflicts."),
                     value = settings.swipeAngleDegrees,
                     range = 5..85,
                     onValueChange = { onSettingsChange(settings.copy(swipeAngleDegrees = it)) }
@@ -719,7 +727,7 @@ private fun PointerPage(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            SettingsSection("指针设置", Icons.Rounded.RadioButtonChecked) {
+            SettingsSection(t("指针设置", "Pointer Settings"), Icons.Rounded.RadioButtonChecked) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier
@@ -732,7 +740,7 @@ private fun PointerPage(
                             subPage = PointerSubPage.Line
                             onSettingsChange(settings.copy(pointerControlStyle = GestureConfig.POINTER_STYLE_LINE_ARROW))
                         },
-                        label = { Text("直线") },
+                        label = { Text(t("直线", "Line")) },
                         leadingIcon = {
                             Icon(Icons.Rounded.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
                         }
@@ -743,7 +751,7 @@ private fun PointerPage(
                             subPage = PointerSubPage.Tracker
                             onSettingsChange(settings.copy(pointerControlStyle = GestureConfig.POINTER_STYLE_TRACKER_CURSOR))
                         },
-                        label = { Text("摇杆") },
+                        label = { Text(t("摇杆", "Tracker")) },
                         leadingIcon = {
                             Icon(Icons.Rounded.RadioButtonChecked, contentDescription = null, modifier = Modifier.size(18.dp))
                         }
@@ -751,7 +759,7 @@ private fun PointerPage(
                     FilterChip(
                         selected = subPage == PointerSubPage.Appearance,
                         onClick = { subPage = PointerSubPage.Appearance },
-                        label = { Text("外观") },
+                        label = { Text(t("外观", "Appearance")) },
                         leadingIcon = {
                             Icon(Icons.Rounded.Palette, contentDescription = null, modifier = Modifier.size(18.dp))
                         }
@@ -774,78 +782,78 @@ private fun LinePointerPage(
     settings: SettingsState,
     onSettingsChange: (SettingsState) -> Unit
 ) {
-    SettingsSection("直线箭头", Icons.Rounded.Tune) {
+    SettingsSection(t("直线箭头", "Line Arrow"), Icons.Rounded.Tune) {
         SettingSlider(
-            title = "速度 / 灵敏度",
+            title = t("速度 / 灵敏度", "Speed / Sensitivity"),
             valueText = "${settings.pointerSensitivity}%",
-            description = "直线箭头跟手程度。",
+            description = t("直线箭头跟手程度。", "How closely the line arrow follows your finger."),
             value = settings.pointerSensitivity,
             range = 40..180,
             onValueChange = { onSettingsChange(settings.copy(pointerSensitivity = it)) }
         )
         SettingSlider(
-            title = "控制圆半径",
+            title = t("控制圆半径", "Control Radius"),
             valueText = "${settings.pointerRadiusDp}dp",
-            description = "拇指活动范围，越大越稳定。",
+            description = t("拇指活动范围，越大越稳定。", "Thumb movement range; larger values feel steadier."),
             value = settings.pointerRadiusDp,
             range = 48..320,
             onValueChange = { onSettingsChange(settings.copy(pointerRadiusDp = it)) }
         )
         SettingSlider(
-            title = "最大速度",
-            valueText = "${settings.pointerMaxSpeed}%屏高/秒",
-            description = "限制指针每秒最多移动多少屏幕高度。",
+            title = t("最大速度", "Max Speed"),
+            valueText = t("${settings.pointerMaxSpeed}%屏高/秒", "${settings.pointerMaxSpeed}% screen/s"),
+            description = t("限制指针每秒最多移动多少屏幕高度。", "Limits how much screen height the pointer can move per second."),
             value = settings.pointerMaxSpeed,
             range = 40..500,
             onValueChange = { onSettingsChange(settings.copy(pointerMaxSpeed = it)) }
         )
         SettingSlider(
-            title = "点击区域",
+            title = t("点击区域", "Touch Area"),
             valueText = "${settings.pointerTouchAreaDp}dp",
-            description = "注入点击时模拟手指接触面积。",
+            description = t("注入点击时模拟手指接触面积。", "Simulated contact area used when injecting a tap."),
             value = settings.pointerTouchAreaDp,
             range = 6..48,
             onValueChange = { onSettingsChange(settings.copy(pointerTouchAreaDp = it)) }
         )
     }
 
-    SettingsSection("直线高级", Icons.Rounded.Settings) {
+    SettingsSection(t("直线高级", "Line Advanced"), Icons.Rounded.Settings) {
         SettingSlider(
-            title = "松手取消距离",
+            title = t("松手取消距离", "Release Cancel Distance"),
             valueText = "${settings.pointerCancelDistanceDp}dp",
-            description = "直线太短时松手取消。",
+            description = t("直线太短时松手取消。", "Release is canceled when the line is too short."),
             value = settings.pointerCancelDistanceDp,
             range = 80..420,
             onValueChange = { onSettingsChange(settings.copy(pointerCancelDistanceDp = it)) }
         )
         SettingSlider(
-            title = "自动取消时间",
-            valueText = "${settings.timeoutSeconds}秒",
-            description = "定位太久会自动取消，避免指针一直停留。",
+            title = t("自动取消时间", "Auto Cancel Time"),
+            valueText = t("${settings.timeoutSeconds}秒", "${settings.timeoutSeconds}s"),
+            description = t("定位太久会自动取消，避免指针一直停留。", "Cancels after a long hold so the pointer does not stay on screen."),
             value = settings.timeoutSeconds,
             range = 2..10,
             onValueChange = { onSettingsChange(settings.copy(pointerTimeoutMs = it * 1000)) }
         )
         SettingSlider(
-            title = "平滑度",
+            title = t("平滑度", "Smoothing"),
             valueText = "${settings.pointerSmoothing}%",
-            description = "越高越稳，越低越跟手。",
+            description = t("越高越稳，越低越跟手。", "Higher is steadier; lower follows faster."),
             value = settings.pointerSmoothing,
             range = 5..90,
             onValueChange = { onSettingsChange(settings.copy(pointerSmoothing = it)) }
         )
         SettingSlider(
-            title = "控制曲线",
+            title = t("控制曲线", "Control Curve"),
             valueText = "${settings.pointerCurve}%",
-            description = "保留给映射函数微调。",
+            description = t("保留给映射函数微调。", "Fine tuning for the pointer mapping curve."),
             value = settings.pointerCurve,
             range = 60..220,
             onValueChange = { onSettingsChange(settings.copy(pointerCurve = it)) }
         )
         SettingSlider(
-            title = "边界留白",
+            title = t("边界留白", "Edge Margin"),
             valueText = "${settings.pointerMarginDp}dp",
-            description = "指针离屏幕边缘的最小距离。",
+            description = t("指针离屏幕边缘的最小距离。", "Minimum distance between the pointer and screen edges."),
             value = settings.pointerMarginDp,
             range = 0..48,
             onValueChange = { onSettingsChange(settings.copy(pointerMarginDp = it)) }
@@ -858,43 +866,43 @@ private fun TrackerPointerPage(
     settings: SettingsState,
     onSettingsChange: (SettingsState) -> Unit
 ) {
-    SettingsSection("摇杆光标", Icons.Rounded.RadioButtonChecked) {
+    SettingsSection(t("摇杆光标", "Tracker Cursor"), Icons.Rounded.RadioButtonChecked) {
         SettingSlider(
-            title = "摇杆灵敏度",
+            title = t("摇杆灵敏度", "Tracker Sensitivity"),
             valueText = "${settings.trackerSensitivity}%",
-            description = "摇杆移动到光标移动的比例。",
+            description = t("摇杆移动到光标移动的比例。", "Ratio between tracker movement and cursor movement."),
             value = settings.trackerSensitivity,
             range = 40..220,
             onValueChange = { onSettingsChange(settings.copy(trackerSensitivity = it)) }
         )
         SettingSlider(
-            title = "摇杆最大速度",
-            valueText = "${settings.trackerMaxSpeed}%屏高/秒",
-            description = "限制摇杆模式的光标速度。",
+            title = t("摇杆最大速度", "Tracker Max Speed"),
+            valueText = t("${settings.trackerMaxSpeed}%屏高/秒", "${settings.trackerMaxSpeed}% screen/s"),
+            description = t("限制摇杆模式的光标速度。", "Limits cursor speed in tracker mode."),
             value = settings.trackerMaxSpeed,
             range = 40..500,
             onValueChange = { onSettingsChange(settings.copy(trackerMaxSpeed = it)) }
         )
         SettingSlider(
-            title = "光标圆大小",
+            title = t("光标圆大小", "Cursor Size"),
             valueText = "${settings.trackerCursorDp}dp",
-            description = "松手点击光标圆中心。",
+            description = t("松手点击光标圆中心。", "Release taps the center of the cursor circle."),
             value = settings.trackerCursorDp,
             range = 8..56,
             onValueChange = { onSettingsChange(settings.copy(trackerCursorDp = it)) }
         )
         SettingSlider(
-            title = "摇杆圆球大小",
+            title = t("摇杆圆球大小", "Tracker Ball Size"),
             valueText = "${settings.trackerBallDp}dp",
-            description = "手指附近显示的摇杆中心点。",
+            description = t("手指附近显示的摇杆中心点。", "Size of the tracker center shown near your finger."),
             value = settings.trackerBallDp,
             range = 4..32,
             onValueChange = { onSettingsChange(settings.copy(trackerBallDp = it)) }
         )
         SettingSlider(
-            title = "摇杆平滑度",
+            title = t("摇杆平滑度", "Tracker Smoothing"),
             valueText = "${settings.trackerSmoothing}%",
-            description = "越高越稳，越低越跟手。",
+            description = t("越高越稳，越低越跟手。", "Higher is steadier; lower follows faster."),
             value = settings.trackerSmoothing,
             range = 5..90,
             onValueChange = { onSettingsChange(settings.copy(trackerSmoothing = it)) }
@@ -907,37 +915,37 @@ private fun AppearancePage(
     settings: SettingsState,
     onSettingsChange: (SettingsState) -> Unit
 ) {
-    SettingsSection("外观", Icons.Rounded.Palette) {
+    SettingsSection(t("外观", "Appearance"), Icons.Rounded.Palette) {
         SettingSlider(
-            title = "控制圆透明度",
+            title = t("控制圆透明度", "Control Circle Opacity"),
             valueText = settings.pointerControlAlpha.toString(),
-            description = "调到 0 就隐藏控制圆。",
+            description = t("调到 0 就隐藏控制圆。", "Set to 0 to hide the control circle."),
             value = settings.pointerControlAlpha,
             range = 0..255,
             onValueChange = { onSettingsChange(settings.copy(pointerControlAlpha = it)) }
         )
         SettingSlider(
-            title = "箭头大小",
+            title = t("箭头大小", "Arrow Size"),
             valueText = "${settings.pointerArrowDp}dp",
-            description = "只影响直线箭头模式。",
+            description = t("只影响直线箭头模式。", "Only affects line arrow mode."),
             value = settings.pointerArrowDp,
             range = 8..36,
             onValueChange = { onSettingsChange(settings.copy(pointerArrowDp = it)) }
         )
         SettingSlider(
-            title = "线条粗细",
+            title = t("线条粗细", "Line Width"),
             valueText = "${settings.pointerLineDp}dp",
-            description = "只影响直线箭头和摇杆中心点描边。",
+            description = t("只影响直线箭头和摇杆中心点描边。", "Only affects the line arrow and tracker center outline."),
             value = settings.pointerLineDp,
             range = 1..8,
             onValueChange = { onSettingsChange(settings.copy(pointerLineDp = it)) }
         )
     }
 
-    SettingsSection("颜色", Icons.Rounded.Palette) {
+    SettingsSection(t("颜色", "Color"), Icons.Rounded.Palette) {
         ColorSwatch(settings.pointerColor)
         SettingSlider(
-            title = "红色",
+            title = t("红色", "Red"),
             valueText = settings.pointerColorRed.toString(),
             description = null,
             value = settings.pointerColorRed,
@@ -945,7 +953,7 @@ private fun AppearancePage(
             onValueChange = { onSettingsChange(settings.copy(pointerColorRed = it)) }
         )
         SettingSlider(
-            title = "绿色",
+            title = t("绿色", "Green"),
             valueText = settings.pointerColorGreen.toString(),
             description = null,
             value = settings.pointerColorGreen,
@@ -953,7 +961,7 @@ private fun AppearancePage(
             onValueChange = { onSettingsChange(settings.copy(pointerColorGreen = it)) }
         )
         SettingSlider(
-            title = "蓝色",
+            title = t("蓝色", "Blue"),
             valueText = settings.pointerColorBlue.toString(),
             description = null,
             value = settings.pointerColorBlue,
@@ -969,7 +977,7 @@ private fun ActionPage(
     onSettingsChange: (SettingsState) -> Unit
 ) {
     var selectedEdge by remember { mutableStateOf("right") }
-    SettingsSection("边缘", Icons.Rounded.AccountTree) {
+    SettingsSection(t("边缘", "Edge"), Icons.Rounded.AccountTree) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier
@@ -986,7 +994,7 @@ private fun ActionPage(
         }
     }
 
-    SettingsSection("${edgeLabel(selectedEdge)}动作", Icons.Rounded.TouchApp) {
+    SettingsSection(t("${edgeLabel(selectedEdge)}动作", "${edgeLabel(selectedEdge)} Actions"), Icons.Rounded.TouchApp) {
         GestureConfig.gestures.forEach { gesture ->
             val key = GestureConfig.actionKey(selectedEdge, gesture)
             ActionDropdownRow(
@@ -1113,7 +1121,7 @@ private fun ModeSelector(
             onClick = {
                 onSettingsChange(settings.copy(pointerControlStyle = GestureConfig.POINTER_STYLE_LINE_ARROW))
             },
-            label = { Text("直线箭头") },
+            label = { Text(t("直线箭头", "Line Arrow")) },
             leadingIcon = {
                 Icon(Icons.Rounded.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
             }
@@ -1123,7 +1131,7 @@ private fun ModeSelector(
             onClick = {
                 onSettingsChange(settings.copy(pointerControlStyle = GestureConfig.POINTER_STYLE_TRACKER_CURSOR))
             },
-            label = { Text("摇杆光标") },
+            label = { Text(t("摇杆光标", "Tracker Cursor")) },
             leadingIcon = {
                 Icon(Icons.Rounded.RadioButtonChecked, contentDescription = null, modifier = Modifier.size(18.dp))
             }
@@ -1146,7 +1154,7 @@ private fun ColorSwatch(color: Color) {
                 .background(color, CircleShape)
         )
         Text(
-            "当前指针颜色",
+            t("当前指针颜色", "Current Pointer Color"),
             style = MaterialTheme.typography.bodyLarge
         )
     }
@@ -1193,7 +1201,7 @@ private fun ActionDropdownRow(
 
 @Composable
 private fun PointerPreview(settings: SettingsState) {
-    SettingsSection("动态预览", Icons.Rounded.Palette) {
+    SettingsSection(t("动态预览", "Live Preview"), Icons.Rounded.Palette) {
         val color = settings.pointerColor
         Surface(
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f),
@@ -1265,7 +1273,7 @@ private fun PointerPreview(settings: SettingsState) {
 
 @Composable
 private fun EdgeRangePreview(settings: SettingsState) {
-    SettingsSection("范围预览", Icons.Rounded.TouchApp) {
+    SettingsSection(t("范围预览", "Range Preview"), Icons.Rounded.TouchApp) {
         Surface(
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f),
             shape = RoundedCornerShape(8.dp),
@@ -1373,28 +1381,34 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawArrow(
 
 private fun edgeLabel(edge: String): String {
     return when (edge) {
-        "left" -> "左边缘"
-        "right" -> "右边缘"
-        "top" -> "上边缘"
-        "bottom" -> "下边缘"
+        "left" -> t("左边缘", "Left Edge")
+        "right" -> t("右边缘", "Right Edge")
+        "top" -> t("上边缘", "Top Edge")
+        "bottom" -> t("下边缘", "Bottom Edge")
         else -> edge
     }
 }
 
 private fun gestureLabel(gesture: String): String {
     return when (gesture) {
-        "click" -> "单击"
-        "double_click" -> "双击"
-        "long_press" -> "长按"
-        "swipe_up" -> "上划"
-        "swipe_down" -> "下划"
-        "swipe_left" -> "左划"
-        "swipe_right" -> "右划"
+        "click" -> t("单击", "Tap")
+        "double_click" -> t("双击", "Double Tap")
+        "long_press" -> t("长按", "Long Press")
+        "swipe_up" -> t("上划", "Swipe Up")
+        "swipe_down" -> t("下划", "Swipe Down")
+        "swipe_left" -> t("左划", "Swipe Left")
+        "swipe_right" -> t("右划", "Swipe Right")
         else -> gesture
     }
 }
 
 private fun actionLabel(action: String): String {
-    val index = GestureConfig.actionValues.indexOf(action)
-    return GestureConfig.actionLabels.getOrElse(index) { "无动作" }
+    return when (action) {
+        GestureConfig.ACTION_NONE -> t("无动作", "No Action")
+        GestureConfig.ACTION_ONE_HAND_TAP -> t("单手点击屏幕", "One-Hand Tap")
+        GestureConfig.ACTION_BACK -> t("返回", "Back")
+        GestureConfig.ACTION_HOME -> t("主页", "Home")
+        GestureConfig.ACTION_RECENTS -> t("最近任务", "Recents")
+        else -> action
+    }
 }
