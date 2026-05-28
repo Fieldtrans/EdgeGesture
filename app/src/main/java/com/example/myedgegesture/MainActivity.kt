@@ -728,7 +728,10 @@ private fun PointerPage(
                 ) {
                     FilterChip(
                         selected = subPage == PointerSubPage.Line,
-                        onClick = { subPage = PointerSubPage.Line },
+                        onClick = {
+                            subPage = PointerSubPage.Line
+                            onSettingsChange(settings.copy(pointerControlStyle = GestureConfig.POINTER_STYLE_LINE_ARROW))
+                        },
                         label = { Text("直线") },
                         leadingIcon = {
                             Icon(Icons.Rounded.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -736,7 +739,10 @@ private fun PointerPage(
                     )
                     FilterChip(
                         selected = subPage == PointerSubPage.Tracker,
-                        onClick = { subPage = PointerSubPage.Tracker },
+                        onClick = {
+                            subPage = PointerSubPage.Tracker
+                            onSettingsChange(settings.copy(pointerControlStyle = GestureConfig.POINTER_STYLE_TRACKER_CURSOR))
+                        },
                         label = { Text("摇杆") },
                         leadingIcon = {
                             Icon(Icons.Rounded.RadioButtonChecked, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -769,7 +775,6 @@ private fun LinePointerPage(
     onSettingsChange: (SettingsState) -> Unit
 ) {
     SettingsSection("直线箭头", Icons.Rounded.Tune) {
-        ModeSelector(settings, onSettingsChange)
         SettingSlider(
             title = "速度 / 灵敏度",
             valueText = "${settings.pointerSensitivity}%",
@@ -854,7 +859,6 @@ private fun TrackerPointerPage(
     onSettingsChange: (SettingsState) -> Unit
 ) {
     SettingsSection("摇杆光标", Icons.Rounded.RadioButtonChecked) {
-        ModeSelector(settings, onSettingsChange)
         SettingSlider(
             title = "摇杆灵敏度",
             valueText = "${settings.trackerSensitivity}%",
