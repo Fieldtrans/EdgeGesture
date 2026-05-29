@@ -7,100 +7,23 @@
 [![LSPosed](https://img.shields.io/badge/LSPosed-module-6f42c1)](https://github.com/LSPosed/LSPosed)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-One-handed edge gestures for LSPosed/Xposed. EdgeGesture helps you tap hard-to-reach areas of the screen with a right-edge gesture, including a line pointer mode and a Tracker + Cursor mode.
-
-![EdgeGesture demo](docs/demo.gif)
-
-<p align="center">
-  <img src="docs/screenshots/line-pointer.jpg" width="260" alt="Line pointer mode" />
-  <img src="docs/screenshots/tracker-cursor.jpg" width="260" alt="Tracker and Cursor mode" />
-</p>
-
-[中文](#中文) | [Download APK](https://github.com/Fieldtrans/EdgeGesture/releases/latest) | [Docs](docs/README.md) | [Install Guide](docs/INSTALL.zh-CN.md) | [Troubleshooting](docs/TROUBLESHOOTING.zh-CN.md)
-
-## Highlights
-
-- One-handed screen tapping from the right edge.
-- Line arrow pointer mode: release to tap at the arrow tip.
-- Tracker + Cursor mode inspired by joystick-style cursor control.
-- Adjustable trigger area, control circle, pointer speed, smoothing, color, cancel timeout, and cancel distance.
-- Top-edge notification shade trigger with a lightweight pre-animation.
-- Configuration import and export.
-- No transparent full-screen touch layer; gesture monitoring runs through the LSPosed/Xposed hook path.
-
-## Requirements
-
-- Rooted Android device.
-- LSPosed installed and enabled.
-- Android 16 / API 36 target build.
-- LSPosed scope should include Android system/framework.
-
-## Installation
-
-1. Download the latest APK from [Releases](https://github.com/Fieldtrans/EdgeGesture/releases/latest).
-2. Install the APK.
-3. Enable EdgeGesture in LSPosed.
-4. Make sure the module scope includes Android system/framework.
-5. Reboot the phone.
-6. Open EdgeGesture and enable the gesture mode you want.
-
-If gestures do not respond, open LSPosed logs and search for `EdgeGesture`.
-
-For detailed setup and troubleshooting, see [安装指南](docs/INSTALL.zh-CN.md) and [排错指南](docs/TROUBLESHOOTING.zh-CN.md).
-
-## How It Works
-
-The app itself is only a settings panel. The gesture listener is injected into `system_server` through LSPosed/Xposed, so gestures can keep working after the app process is killed.
-
-The current design keeps the overlay visual-only and avoids using a transparent full-screen touch layer. This reduces conflict with normal touches and system back gestures.
-
-## Modes
-
-### Line Pointer
-
-Swipe up from the right edge to show a green arrow. Move your thumb inside a small control area; the arrow maps that movement to a larger screen range. Releasing taps at the arrow tip.
-
-### Tracker + Cursor
-
-Swipe up to show a tracker ball and cursor. Move the tracker in a joystick-like area to control the cursor. Releasing outside the cancel circle performs a tap.
-
-## Build
-
-```bash
-./gradlew :app:assembleRelease
-```
-
-Release APK output:
-
-```text
-app/build/outputs/apk/release/app-release.apk
-```
-
-For easier local testing and upgrade compatibility with test builds, the current release build uses the debug signing configuration.
-
-## Status
-
-Current version: `1.0.4`.
-
-This module hooks input handling inside `system_server`. Use it carefully and keep a working recovery path before testing custom builds.
-
-License: [GPL-3.0](LICENSE).
-
-## Contributors
-
-See [CONTRIBUTORS.md](CONTRIBUTORS.md).
-
-## 中文
-
-EdgeGesture 是一个 LSPosed/Xposed 单手边缘手势模块，用来解决大屏手机单手点不到屏幕上方或远处区域的问题。
-
-![EdgeGesture 演示](docs/demo.gif)
+**语言 / Language:** 中文 | [English](#english)
 
 [下载 APK](https://github.com/Fieldtrans/EdgeGesture/releases/latest) | [文档目录](docs/README.md) | [安装指南](docs/INSTALL.zh-CN.md) | [排错指南](docs/TROUBLESHOOTING.zh-CN.md)
 
+EdgeGesture 是一个适用于 LSPosed/Xposed 的单手边缘手势模块，用来解决大屏手机单手点不到屏幕上方或远处区域的问题。
+
+![EdgeGesture 演示](docs/demo.gif)
+
+<p align="center">
+  <img src="docs/screenshots/line-pointer.jpg" width="260" alt="直线箭头模式" />
+  <img src="docs/screenshots/tracker-cursor.jpg" width="260" alt="摇杆光标模式" />
+</p>
+
 ## 功能亮点
 
-- 从右侧边缘上划，触发单手点击。
+- 从边缘上划，触发单手点击、返回、主页或最近任务。
+- 边缘双击可触发最近任务。
 - 直线箭头模式：松手后点击箭头尖的位置。
 - Tracker + Cursor 摇杆光标模式。
 - 可调触发区域、控制圆、指针速度、平滑度、颜色、取消时间和取消距离。
@@ -156,8 +79,6 @@ Release APK 输出位置：
 app/build/outputs/apk/release/app-release.apk
 ```
 
-为了方便本地测试和覆盖安装当前测试包，release 构建暂时使用 debug 签名配置。
-
 ## 当前状态
 
 当前版本：`1.0.4`。
@@ -169,3 +90,82 @@ app/build/outputs/apk/release/app-release.apk
 ## 贡献者
 
 详见 [CONTRIBUTORS.md](CONTRIBUTORS.md)。
+
+## English
+
+**Language / 语言:** [中文](#edgegesture) | English
+
+[Download APK](https://github.com/Fieldtrans/EdgeGesture/releases/latest) | [Docs](docs/README.md) | [Install Guide](docs/INSTALL.zh-CN.md) | [Troubleshooting](docs/TROUBLESHOOTING.zh-CN.md)
+
+One-handed edge gestures for LSPosed/Xposed. EdgeGesture helps you tap hard-to-reach areas of the screen with an edge gesture, including a line pointer mode and a Tracker + Cursor mode.
+
+## Highlights
+
+- Edge swipe up can trigger one-hand tap, Back, Home, or Recents.
+- Edge double tap can trigger Recents.
+- Line arrow pointer mode: release to tap at the arrow tip.
+- Tracker + Cursor mode inspired by joystick-style cursor control.
+- Adjustable trigger area, control circle, pointer speed, smoothing, color, cancel timeout, and cancel distance.
+- Top notification shade trigger with a lightweight pre-animation.
+- Configuration import and export.
+- No transparent full-screen touch layer; gesture monitoring runs through the LSPosed/Xposed hook path.
+
+## Requirements
+
+- Rooted Android device.
+- LSPosed installed and enabled.
+- Android 16 / API 36 target build.
+- LSPosed scope should include Android system/framework.
+
+## Installation
+
+1. Download the latest APK from [Releases](https://github.com/Fieldtrans/EdgeGesture/releases/latest).
+2. Install the APK.
+3. Enable EdgeGesture in LSPosed.
+4. Make sure the module scope includes Android system/framework.
+5. Reboot the phone.
+6. Open EdgeGesture and enable the gesture mode you want.
+
+If gestures do not respond, open LSPosed logs and search for `EdgeGesture`.
+
+For detailed setup and troubleshooting, see [安装指南](docs/INSTALL.zh-CN.md) and [排错指南](docs/TROUBLESHOOTING.zh-CN.md).
+
+## How It Works
+
+The app itself is only a settings panel. The gesture listener is injected into `system_server` through LSPosed/Xposed, so gestures can keep working after the app process is killed.
+
+The current design keeps the overlay visual-only and avoids using a transparent full-screen touch layer. This reduces conflicts with normal touches and system back gestures.
+
+## Modes
+
+### Line Pointer
+
+Swipe up from the right edge to show a green arrow. Move your thumb inside a small control area; the arrow maps that movement to a larger screen range. Releasing taps at the arrow tip.
+
+### Tracker + Cursor
+
+Swipe up to show a tracker ball and cursor. Move the tracker in a joystick-like area to control the cursor. Releasing outside the cancel circle performs a tap.
+
+## Build
+
+```bash
+./gradlew :app:assembleRelease
+```
+
+Release APK output:
+
+```text
+app/build/outputs/apk/release/app-release.apk
+```
+
+## Status
+
+Current version: `1.0.4`.
+
+This module hooks input handling inside `system_server`. Use it carefully and keep a working recovery path before testing custom builds.
+
+License: [GPL-3.0](LICENSE).
+
+## Contributors
+
+See [CONTRIBUTORS.md](CONTRIBUTORS.md).
