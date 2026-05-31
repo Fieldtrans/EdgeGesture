@@ -22,6 +22,7 @@ class MainHook : IXposedHookLoadPackage {
     companion object {
         private const val TAG = "EdgeGesture"
         private const val MAX_HELD_TOUCH_EVENTS = 32
+        private const val GESTURE_SWIPE_UP = "swipe_up"
     }
 
     private var configReceiverRegistered = false
@@ -176,9 +177,10 @@ class MainHook : IXposedHookLoadPackage {
                         if (RuntimeGestureConfig.enabled) {
                             enableNativeInputFilter(param.thisObject)
                             registerInputFilter(param.thisObject, classLoader)
-                            DebugLog.markStatus(context, GestureConfig.KEY_STATUS_STARTED_AT, "input filter enabled")
+                            DebugLog.markStatus(context, GestureConfig.KEY_STATUS_STARTED_AT, runtimeSummary())
                         } else {
                             disableNativeInputFilter(param.thisObject)
+                            DebugLog.markStatus(context, GestureConfig.KEY_STATUS_LOADED_AT, "gestures disabled")
                         }
                     }
                 }
@@ -388,7 +390,7 @@ class MainHook : IXposedHookLoadPackage {
                 if (intent.action == Intent.ACTION_USER_UNLOCKED) {
                     loadSavedConfig(receiverContext)
                     applyRuntimeConfig(receiverContext)
-                    DebugLog.markStatus(receiverContext, GestureConfig.KEY_STATUS_STARTED_AT, "config reloaded after unlock")
+                    DebugLog.markStatus(receiverContext, GestureConfig.KEY_STATUS_STARTED_AT, runtimeSummary())
                     return
                 }
 
@@ -409,9 +411,11 @@ class MainHook : IXposedHookLoadPackage {
                 XposedBridge.log(
                     "$TAG: config updated enabled=${RuntimeGestureConfig.enabled} " +
                         "edge=${RuntimeGestureConfig.edgeWidthDp} " +
-                        "distance=${RuntimeGestureConfig.swipeDistanceDp}"
+                        "distance=${RuntimeGestureConfig.swipeDistanceDp} " +
+                        "leftUp=${RuntimeGestureConfig.actionFor(EdgeGestureDetector.Edge.LEFT, GESTURE_SWIPE_UP)} " +
+                        "rightUp=${RuntimeGestureConfig.actionFor(EdgeGestureDetector.Edge.RIGHT, GESTURE_SWIPE_UP)}"
                 )
-                DebugLog.markStatus(receiverContext, GestureConfig.KEY_STATUS_STARTED_AT, "config updated")
+                DebugLog.markStatus(receiverContext, GestureConfig.KEY_STATUS_STARTED_AT, runtimeSummary())
             }
         }
 
@@ -451,7 +455,9 @@ class MainHook : IXposedHookLoadPackage {
             applyLegacyConfigFallback(prefs)
             XposedBridge.log(
                 "$TAG: saved config loaded enabled=${RuntimeGestureConfig.enabled} " +
-                    "updatedAt=${prefs.getLong(GestureConfig.KEY_CONFIG_UPDATED_AT, 0L)}"
+                    "updatedAt=${prefs.getLong(GestureConfig.KEY_CONFIG_UPDATED_AT, 0L)} " +
+                    "leftUp=${RuntimeGestureConfig.actionFor(EdgeGestureDetector.Edge.LEFT, GESTURE_SWIPE_UP)} " +
+                    "rightUp=${RuntimeGestureConfig.actionFor(EdgeGestureDetector.Edge.RIGHT, GESTURE_SWIPE_UP)}"
             )
         } catch (t: Throwable) {
             XposedBridge.log("$TAG: saved config load skipped: ${t.message}")
@@ -494,6 +500,7 @@ class MainHook : IXposedHookLoadPackage {
         } else {
             resetInputState()
             disableInputFilter()
+            DebugLog.markStatus(context, GestureConfig.KEY_STATUS_LOADED_AT, "gestures disabled")
         }
     }
 
@@ -501,5 +508,12 @@ class MainHook : IXposedHookLoadPackage {
         OneHandPointer.cancel()
         detector.reset()
         recycleHeldTouchEvents()
+    }
+
+    private fun runtimeSummary(): String {
+        return "input filter enabled; leftUp=${RuntimeGestureConfig.actionFor(EdgeGestureDetector.Edge.LEFT, GESTURE_SWIPE_UP)} " +
+            "rightUp=${RuntimeGestureConfig.actionFor(EdgeGestureDetector.Edge.RIGHT, GESTURE_SWIPE_UP)} " +
+            "edge=${RuntimeGestureConfig.edgeWidthDp} distance=${RuntimeGestureConfig.swipeDistanceDp} " +
+            "angle=${RuntimeGestureConfig.swipeAngleDegrees} style=${RuntimeGestureConfig.pointerControlStyle}"
     }
 }

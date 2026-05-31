@@ -5,8 +5,8 @@
 在 `app/build.gradle.kts` 中更新：
 
 ```kotlin
-versionCode = 8
-versionName = "1.0.1"
+versionCode = 12
+versionName = "1.1.0"
 ```
 
 同时更新：
@@ -60,8 +60,8 @@ apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk
 
 ```bash
 git add .
-git commit -m "Release EdgeGesture 1.0.1"
-git tag -a v1.0.1 -m "EdgeGesture 1.0.1"
+git commit -m "Release EdgeGesture 1.1.0"
+git tag -a v1.1.0 -m "EdgeGesture 1.1.0"
 git push origin main --tags
 ```
 

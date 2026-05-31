@@ -255,7 +255,9 @@ class EdgeGestureDetector(
     }
 
     private fun shouldDispatchImmediately(edge: Edge): Boolean {
-        return RuntimeGestureConfig.actionFor(edge, "swipe_up") == GestureConfig.ACTION_ONE_HAND_TAP
+        val action = RuntimeGestureConfig.actionFor(edge, "swipe_up")
+        return action == GestureConfig.ACTION_ONE_HAND_TAP ||
+                action == GestureConfig.ACTION_NOTIFICATIONS
     }
 
     private fun handleDoubleTapRecents(
@@ -291,6 +293,7 @@ class EdgeGestureDetector(
                 y = event.rawY
             )
             DebugLog.info("double tap recents edge=${current.edge}")
+            return true
         } else {
             pendingDoubleTap = PendingDoubleTap(
                 edge = current.edge,
@@ -301,9 +304,9 @@ class EdgeGestureDetector(
                 y = event.rawY,
                 eventTime = event.eventTime
             )
-            DebugLog.info("double tap pending edge=${current.edge}")
+            DebugLog.info("double tap pending edge=${current.edge}; first tap passed through")
+            return false
         }
-        return true
     }
 
     private fun isMatchingDoubleTap(
@@ -313,7 +316,7 @@ class EdgeGestureDetector(
         event: MotionEvent
     ): Boolean {
         if (pending.edge != current.edge || pending.zone != current.zone) return false
-        if (event.eventTime - pending.eventTime > DOUBLE_TAP_TIMEOUT_MS) return false
+        if (event.eventTime - pending.eventTime > doubleTapTimeoutMs()) return false
 
         val slop = DOUBLE_TAP_SLOP_DP * context.resources.displayMetrics.density
         val dx = event.rawX - pending.x
@@ -323,9 +326,16 @@ class EdgeGestureDetector(
 
     private fun clearExpiredDoubleTap(eventTime: Long) {
         val pending = pendingDoubleTap ?: return
-        if (eventTime - pending.eventTime > DOUBLE_TAP_TIMEOUT_MS) {
+        if (eventTime - pending.eventTime > doubleTapTimeoutMs()) {
             pendingDoubleTap = null
         }
+    }
+
+    private fun doubleTapTimeoutMs(): Long {
+        return RuntimeGestureConfig.doubleTapTimeoutMs.coerceIn(
+            MIN_DOUBLE_TAP_TIMEOUT_MS,
+            MAX_DOUBLE_TAP_TIMEOUT_MS
+        ).toLong()
     }
 
     private fun isInsideTriggerRegion(width: Float, height: Float, edge: Edge, x: Float, y: Float): Boolean {
@@ -392,7 +402,8 @@ class EdgeGestureDetector(
         const val MAX_HOLD_MS = 110L
         const val MAX_UP_HOLD_MS = 260L
         const val TAP_MAX_HOLD_MS = 260L
-        const val DOUBLE_TAP_TIMEOUT_MS = 320L
+        const val MIN_DOUBLE_TAP_TIMEOUT_MS = 120
+        const val MAX_DOUBLE_TAP_TIMEOUT_MS = 320
         const val NATIVE_BACK_YIELD_SLOP_DP = 8f
         const val HORIZONTAL_YIELD_DISTANCE_DP = 6f
         const val POSSIBLE_UP_DISTANCE_DP = 10f

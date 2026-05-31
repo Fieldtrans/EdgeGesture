@@ -33,6 +33,14 @@ object GestureActionDispatcher {
             GestureConfig.ACTION_BACK -> injectSystemKey(context, KeyEvent.KEYCODE_BACK, "back")
             GestureConfig.ACTION_HOME -> injectSystemKey(context, KeyEvent.KEYCODE_HOME, "home")
             GestureConfig.ACTION_RECENTS -> toggleRecents(context)
+            GestureConfig.ACTION_NOTIFICATIONS -> OneHandPointer.start(
+                context,
+                x,
+                y,
+                x,
+                y,
+                notificationOnly = true
+            )
             GestureConfig.ACTION_ONE_HAND_TAP -> OneHandPointer.start(context, x, y, x, y)
             else -> DebugLog.info("no action mapped")
         }
@@ -48,6 +56,10 @@ object GestureActionDispatcher {
     }
 
     private fun toggleRecentsByStatusBar(): Boolean {
+        return callStatusBarMethod("toggleRecentApps", "toggleRecents")
+    }
+
+    private fun callStatusBarMethod(methodName: String, logName: String): Boolean {
         return try {
             val service = Class.forName("android.os.ServiceManager")
                 .getMethod("getService", String::class.java)
@@ -56,7 +68,7 @@ object GestureActionDispatcher {
             val stubClass = Class.forName("com.android.internal.statusbar.IStatusBarService\$Stub")
             val serviceInterface = stubClass.getMethod("asInterface", android.os.IBinder::class.java)
                 .invoke(null, service)
-            val method = serviceInterface.javaClass.methods.firstOrNull { it.name == "toggleRecentApps" }
+            val method = serviceInterface.javaClass.methods.firstOrNull { it.name == methodName }
                 ?: return false
 
             InputInjectionGuard.runIgnoring {
@@ -64,7 +76,7 @@ object GestureActionDispatcher {
             }
             true
         } catch (t: Throwable) {
-            XposedBridge.log("EdgeGesture: toggleRecents failed: ${t.message}")
+            XposedBridge.log("EdgeGesture: $logName failed: ${t.message}")
             false
         }
     }

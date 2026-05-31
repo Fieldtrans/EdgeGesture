@@ -10,6 +10,7 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PixelFormat
+import android.graphics.PorterDuff
 import android.graphics.Rect
 import android.graphics.Shader
 import android.hardware.input.InputManager
@@ -54,6 +55,7 @@ object OneHandPointer {
         val maxPointerSpeed: Float,
         val notificationHotspotHeight: Float,
         val notificationPreviewHeight: Float,
+        val notificationOnly: Boolean,
         val smoothing: Float,
         val controlStyle: String,
         val cursorStartX: Float,
@@ -96,7 +98,8 @@ object OneHandPointer {
         anchorX: Float,
         anchorY: Float,
         fingerX: Float,
-        fingerY: Float
+        fingerY: Float,
+        notificationOnly: Boolean = false
     ): Boolean {
         if (session != null) return true
 
@@ -176,6 +179,7 @@ object OneHandPointer {
             maxPointerSpeed = maxPointerSpeed,
             notificationHotspotHeight = notificationHotspotHeight,
             notificationPreviewHeight = notificationPreviewHeight,
+            notificationOnly = notificationOnly,
             smoothing = smoothing,
             controlStyle = controlStyle,
             cursorStartX = initialPointer.first,
@@ -510,11 +514,21 @@ object OneHandPointer {
         session = null
 
         if (shouldClick) {
+            val notificationTap = RuntimeGestureConfig.notificationShadeMode ==
+                    GestureConfig.NOTIFICATION_SHADE_RELEASE &&
+                    isInsideNotificationHotspot(current, arrowTipX, arrowTipY)
             postToMain {
                 ClickFeedbackOverlay(context, arrowTipX, arrowTipY, tapTouchArea, current.color).show()
                 mainHandler?.postDelayed({
-                    injectTap(context.applicationContext, arrowTipX, arrowTipY, tapTouchArea)
-                    DebugLog.info("tap requested at arrow tip $arrowTipX,$arrowTipY")
+                    if (notificationTap) {
+                        val expanded = expandNotificationShade(context.applicationContext)
+                        DebugLog.info("notification shade clicked by pointer expanded=$expanded")
+                    } else if (!current.notificationOnly || current.notificationShadeTriggered) {
+                        injectTap(context.applicationContext, arrowTipX, arrowTipY, tapTouchArea)
+                        DebugLog.info("tap requested at arrow tip $arrowTipX,$arrowTipY")
+                    } else {
+                        DebugLog.info("notification action canceled outside status bar x=$arrowTipX y=$arrowTipY")
+                    }
                 }, TAP_AFTER_OVERLAY_DISMISS_MS)
             }
         } else if (click) {
@@ -547,25 +561,18 @@ object OneHandPointer {
     }
 
     private fun updateNotificationShadeHold(current: Session) {
-        if (current.notificationShadeTriggered) return
-
         updateNotificationPreview(current)
 
-        if (!isInsideNotificationHotspot(current)) {
-            cancelNotificationShadeHold(current)
-            return
-        }
+        if (RuntimeGestureConfig.notificationShadeMode != GestureConfig.NOTIFICATION_SHADE_TOUCH) return
+        if (current.notificationShadeTriggered) return
+        if (!isInsideNotificationHotspot(current, current.pointerX, current.pointerY)) return
 
         current.notificationShadeTriggered = true
         cancelNotificationShadeHold(current)
         postToMain {
             if (session !== current) return@postToMain
-            cancelTimeout(current)
-            current.overlay.dismiss()
-            session = null
-
             val expanded = expandNotificationShade(current.context)
-            DebugLog.info("notification shade top hit triggered expanded=$expanded")
+            DebugLog.info("notification shade touched by pointer expanded=$expanded")
         }
     }
 
@@ -576,10 +583,10 @@ object OneHandPointer {
         DebugLog.info("notification shade hold canceled")
     }
 
-    private fun isInsideNotificationHotspot(current: Session): Boolean {
-        return current.pointerY <= current.notificationHotspotHeight &&
-                current.pointerX >= 0f &&
-                current.pointerX <= current.width
+    private fun isInsideNotificationHotspot(current: Session, x: Float, y: Float): Boolean {
+        return y <= current.notificationHotspotHeight &&
+                x >= 0f &&
+                x <= current.width
     }
 
     private fun updateNotificationPreview(current: Session) {
@@ -1040,6 +1047,7 @@ object OneHandPointer {
                 val oldRight = dirtyRight
                 val oldBottom = dirtyBottom
                 val hadOldBounds = hasDirtyBounds
+                val alphaChanged = hadOldBounds && this.controlAlpha != newControlAlpha
                 val controlChanged = !hadOldBounds ||
                         this.anchorX != anchorX ||
                         this.anchorY != anchorY ||
@@ -1088,7 +1096,9 @@ object OneHandPointer {
                 dirtyBottom = newDirtyBottom
                 hasDirtyBounds = true
 
-                if (!hadOldBounds) {
+                if (alphaChanged) {
+                    invalidate()
+                } else if (!hadOldBounds) {
                     invalidateDirty(newDirtyLeft, newDirtyTop, newDirtyRight, newDirtyBottom)
                 } else {
                     invalidateDirty(
@@ -1102,6 +1112,9 @@ object OneHandPointer {
 
             override fun onDraw(canvas: Canvas) {
                 super.onDraw(canvas)
+                if (controlAlpha <= 0) {
+                    canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+                }
 
                 drawNotificationPreview(canvas)
 

@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">EdgeGesture</string>
+    <string name="accessibility_service_label">EdgeGesture</string>
+    <string name="accessibility_service_description">使用边缘手势触发返回、主页、最近任务和通知栏等用户主动选择的动作。</string>
     <string-array name="gesture_action_labels">
         <item>无动作</item>
         <item>返回</item>

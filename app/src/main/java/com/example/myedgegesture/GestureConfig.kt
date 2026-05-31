@@ -12,6 +12,8 @@ object GestureConfig {
     const val KEY_TRIGGER_REGION_START_PERCENT = "trigger_region_start_percent"
     const val KEY_TRIGGER_REGION_END_PERCENT = "trigger_region_end_percent"
     const val KEY_SWIPE_ANGLE_DEGREES = "swipe_angle_degrees"
+    const val KEY_DOUBLE_TAP_TIMEOUT_MS = "double_tap_timeout_ms"
+    const val KEY_NOTIFICATION_SHADE_MODE = "notification_shade_mode"
     const val KEY_POINTER_RADIUS_DP = "pointer_radius_dp"
     const val KEY_POINTER_CONTROL_ALPHA = "pointer_control_alpha"
     const val KEY_POINTER_SENSITIVITY = "pointer_sensitivity"
@@ -45,11 +47,14 @@ object GestureConfig {
     const val ACTION_BACK = "back"
     const val ACTION_HOME = "home"
     const val ACTION_RECENTS = "recents"
+    const val ACTION_NOTIFICATIONS = "notifications"
     const val ACTION_ONE_HAND_TAP = "one_hand_tap"
 
     const val POINTER_MAPPING_PRECISION = "precision"
     const val POINTER_STYLE_LINE_ARROW = "line_arrow"
     const val POINTER_STYLE_TRACKER_CURSOR = "tracker_cursor"
+    const val NOTIFICATION_SHADE_TOUCH = "touch"
+    const val NOTIFICATION_SHADE_RELEASE = "release"
 
     const val DEFAULT_ENABLED = false
     const val DEFAULT_EDGE_WIDTH_DP = 18
@@ -57,6 +62,8 @@ object GestureConfig {
     const val DEFAULT_TRIGGER_REGION_START_PERCENT = 0
     const val DEFAULT_TRIGGER_REGION_END_PERCENT = 100
     const val DEFAULT_SWIPE_ANGLE_DEGREES = 30
+    const val DEFAULT_DOUBLE_TAP_TIMEOUT_MS = 220
+    const val DEFAULT_NOTIFICATION_SHADE_MODE = NOTIFICATION_SHADE_RELEASE
     const val DEFAULT_POINTER_RADIUS_DP = 120
     const val DEFAULT_POINTER_CONTROL_ALPHA = 48
     const val DEFAULT_POINTER_SENSITIVITY = 100
@@ -81,6 +88,12 @@ object GestureConfig {
     const val DEFAULT_POINTER_COLOR_GREEN = 220
     const val DEFAULT_POINTER_COLOR_BLUE = 80
 
+    const val ACCESSIBILITY_MIN_EDGE_WIDTH_DP = 8
+    const val ACCESSIBILITY_MAX_EDGE_WIDTH_DP = 32
+    const val ACCESSIBILITY_MAX_EDGE_WIDTH_SCREEN_PERCENT = 0.08f
+    const val ACCESSIBILITY_SYSTEM_GESTURE_GAP_DP = 8
+    const val ACCESSIBILITY_MAX_SYSTEM_GESTURE_GAP_SCREEN_PERCENT = 0.08f
+
     val pointerMappingValues = listOf(
         POINTER_MAPPING_PRECISION
     )
@@ -97,6 +110,11 @@ object GestureConfig {
         "Tracker + Cursor"
     )
 
+    val notificationShadeModes = listOf(
+        NOTIFICATION_SHADE_RELEASE,
+        NOTIFICATION_SHADE_TOUCH
+    )
+
     val edges = listOf("left", "right")
     val gestures = listOf(
         "double_click",
@@ -108,8 +126,9 @@ object GestureConfig {
         ACTION_BACK,
         ACTION_HOME,
         ACTION_RECENTS,
+        ACTION_NOTIFICATIONS,
     )
-    val actionLabels = listOf("无动作", "单手点击屏幕", "返回", "主页", "最近任务")
+    val actionLabels = listOf("无动作", "单手点击屏幕", "返回", "主页", "最近任务", "通知栏")
 
     fun actionValuesForGesture(gesture: String): List<String> {
         return when (gesture) {
@@ -140,6 +159,10 @@ object GestureConfig {
         return sanitizeAction(gesture, action)
     }
 
+    fun sanitizeNotificationShadeMode(mode: String?): String {
+        return mode?.takeIf { it in notificationShadeModes } ?: DEFAULT_NOTIFICATION_SHADE_MODE
+    }
+
     fun putConfigExtras(
         intent: Intent,
         enabled: Boolean,
@@ -148,6 +171,8 @@ object GestureConfig {
         triggerRegionStartPercent: Int,
         triggerRegionEndPercent: Int,
         swipeAngleDegrees: Int,
+        doubleTapTimeoutMs: Int,
+        notificationShadeMode: String,
         pointerRadiusDp: Int,
         pointerControlAlpha: Int,
         pointerSensitivity: Int,
@@ -179,6 +204,8 @@ object GestureConfig {
         intent.putExtra(KEY_TRIGGER_REGION_START_PERCENT, triggerRegionStartPercent)
         intent.putExtra(KEY_TRIGGER_REGION_END_PERCENT, triggerRegionEndPercent)
         intent.putExtra(KEY_SWIPE_ANGLE_DEGREES, swipeAngleDegrees)
+        intent.putExtra(KEY_DOUBLE_TAP_TIMEOUT_MS, doubleTapTimeoutMs)
+        intent.putExtra(KEY_NOTIFICATION_SHADE_MODE, sanitizeNotificationShadeMode(notificationShadeMode))
         intent.putExtra(KEY_POINTER_RADIUS_DP, pointerRadiusDp)
         intent.putExtra(KEY_POINTER_CONTROL_ALPHA, pointerControlAlpha)
         intent.putExtra(KEY_POINTER_SENSITIVITY, pointerSensitivity)

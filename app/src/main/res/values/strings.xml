@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">EdgeGesture</string>
+    <string name="accessibility_service_label">EdgeGesture</string>
+    <string name="accessibility_service_description">Use edge gestures to trigger user-selected actions such as Back, Home, Recents, and Notifications.</string>
     <string-array name="gesture_action_labels">
         <item>No Action</item>
         <item>Back</item>

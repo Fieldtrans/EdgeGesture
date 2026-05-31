@@ -2,17 +2,35 @@ package com.example.myedgegesture
 
 import android.content.Context
 import android.os.SystemClock
-import de.robv.android.xposed.XposedBridge
+import android.util.Log
 
 object DebugLog {
     private const val TAG = "EdgeGesture"
 
     fun info(message: String) {
-        XposedBridge.log("$TAG: $message")
+        write(message)
     }
 
     fun always(message: String) {
-        XposedBridge.log("$TAG: $message")
+        write(message)
+    }
+
+    private fun write(message: String) {
+        val line = "$TAG: $message"
+        if (!writeXposed(line)) {
+            Log.i(TAG, message)
+        }
+    }
+
+    private fun writeXposed(line: String): Boolean {
+        return try {
+            Class.forName("de.robv.android.xposed.XposedBridge")
+                .getMethod("log", String::class.java)
+                .invoke(null, line)
+            true
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     fun markStatus(context: Context, key: String, message: String) {

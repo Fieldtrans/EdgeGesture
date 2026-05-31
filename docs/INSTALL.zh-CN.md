@@ -2,12 +2,22 @@
 
 ## 准备条件
 
-- 手机已经 Root。
-- 已安装并启用 LSPosed。
 - 已安装 EdgeGesture APK。
 - 当前版本主要面向 Android 16 / API 36。
+- 普通模式无需 Root，但需要开启 EdgeGesture 无障碍服务。
+- LSPosed 增强模式需要手机已 Root，并已安装启用 LSPosed。
 
-## 安装步骤
+## 普通模式（无 Root）
+
+1. 在 GitHub Releases 下载最新版 APK。
+2. 安装 APK。
+3. 打开 EdgeGesture。
+4. 点击“打开无障碍设置”。
+5. 在系统无障碍服务中启用 EdgeGesture。
+6. 回到 EdgeGesture，打开“启用模块手势”开关。
+7. 选择直线箭头或摇杆光标模式，并保存配置。
+
+## LSPosed 增强模式
 
 1. 在 GitHub Releases 下载最新版 APK。
 2. 安装 APK。
@@ -16,9 +26,9 @@
 5. 进入 EdgeGesture 的作用域设置。
 6. 勾选 Android 系统/框架相关作用域。
 7. 重启手机。
-8. 打开 EdgeGesture，确认模块状态显示为已加载。
+8. 打开 EdgeGesture，确认模块状态显示为已加载或输入过滤器已启动。
 9. 打开启用模块手势开关。
-10. 选择直线箭头或摇杆光标模式。
+10. 选择直线箭头或摇杆光标模式，并保存配置。
 
 ## 推荐首次设置
 
@@ -31,7 +41,8 @@
 
 成功时通常会看到：
 
-- EdgeGesture App 中显示 LSPosed 已加载模块。
+- 普通模式：无障碍服务已开启，边缘上划可以调出指针。
+- LSPosed 增强模式：EdgeGesture App 中显示 LSPosed 已加载模块或输入过滤器已启动。
 - 右侧边缘上划后出现指针或摇杆光标。
 - LSPosed 日志中可以搜索到 `EdgeGesture`。
 
@@ -51,4 +62,5 @@
 
 1. 在 LSPosed 中禁用 EdgeGesture。
 2. 重启手机。
-3. 卸载 EdgeGesture App。
+3. 在系统无障碍设置中关闭 EdgeGesture。
+4. 卸载 EdgeGesture App。

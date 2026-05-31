@@ -5,21 +5,25 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
+import android.os.SystemClock
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,11 +33,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountTree
 import androidx.compose.material.icons.rounded.Download
@@ -42,7 +46,6 @@ import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.Restore
-import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Tune
@@ -53,6 +56,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -64,6 +69,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -83,33 +89,38 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+private const val KEY_NEW_USER_GUIDE_SHOWN = "new_user_guide_shown"
+
 class MainActivity : ComponentActivity() {
-    private val mainHandler = Handler(Looper.getMainLooper())
-    private var pendingAutoSave: Runnable? = null
     private var latestState: SettingsState? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        requestHighRefreshRate()
 
         val initialState = loadState()
         latestState = initialState
 
         setContent {
             var settings by remember { mutableStateOf(initialState) }
-
-            LaunchedEffect(Unit) {
-                saveConfig(settings, showToast = false)
+            val prefs = remember { getSharedPreferences(GestureConfig.PREFS_NAME, MODE_PRIVATE) }
+            var showGuide by remember {
+                mutableStateOf(!prefs.getBoolean(KEY_NEW_USER_GUIDE_SHOWN, false))
             }
 
             EdgeGestureTheme {
@@ -117,12 +128,12 @@ class MainActivity : ComponentActivity() {
                     settings = settings,
                     onSettingsChange = { next ->
                         settings = next
-                        scheduleAutoSave(next)
+                        latestState = next
+                        saveConfig(next)
                     },
-                    onSave = { saveConfig(settings, showToast = true) },
                     onReset = {
                         settings = settings.withRecommendedValues()
-                        saveConfig(settings, showToast = false)
+                        saveConfig(settings)
                         Toast.makeText(this, t("已恢复推荐值", "Recommended values restored"), Toast.LENGTH_SHORT).show()
                     },
                     onExport = { uri ->
@@ -131,30 +142,32 @@ class MainActivity : ComponentActivity() {
                     onImport = { uri ->
                         importConfig(uri)?.let { imported ->
                             settings = imported
-                            saveConfig(imported, showToast = false)
+                            saveConfig(imported)
                             Toast.makeText(this, t("配置已导入", "Config imported"), Toast.LENGTH_SHORT).show()
                         }
                     },
-                    hookStatus = readHookStatus()
+                    hookStatus = readHookStatus(),
+                    onShowGuide = { showGuide = true }
                 )
+
+                if (showGuide) {
+                    NewUserGuideDialog(
+                        onDismiss = {
+                            prefs.edit().putBoolean(KEY_NEW_USER_GUIDE_SHOWN, true).apply()
+                            showGuide = false
+                        }
+                    )
+                }
             }
         }
     }
 
-    override fun onDestroy() {
-        pendingAutoSave?.let { mainHandler.removeCallbacks(it) }
-        pendingAutoSave = null
-        super.onDestroy()
-    }
-
-    private fun scheduleAutoSave(state: SettingsState) {
-        latestState = state
-        pendingAutoSave?.let { mainHandler.removeCallbacks(it) }
-        val runnable = Runnable {
-            latestState?.let { saveConfig(it, showToast = false) }
+    private fun requestHighRefreshRate() {
+        runCatching {
+            val attrs = window.attributes
+            attrs.preferredRefreshRate = 120f
+            window.attributes = attrs
         }
-        pendingAutoSave = runnable
-        mainHandler.postDelayed(runnable, 120L)
     }
 
     private fun loadState(): SettingsState {
@@ -183,6 +196,16 @@ class MainActivity : ComponentActivity() {
                 GestureConfig.DEFAULT_TRIGGER_REGION_END_PERCENT
             ),
             swipeAngleDegrees = prefs.getInt(GestureConfig.KEY_SWIPE_ANGLE_DEGREES, GestureConfig.DEFAULT_SWIPE_ANGLE_DEGREES),
+            doubleTapTimeoutMs = prefs.getInt(
+                GestureConfig.KEY_DOUBLE_TAP_TIMEOUT_MS,
+                GestureConfig.DEFAULT_DOUBLE_TAP_TIMEOUT_MS
+            ),
+            notificationShadeMode = GestureConfig.sanitizeNotificationShadeMode(
+                prefs.getString(
+                    GestureConfig.KEY_NOTIFICATION_SHADE_MODE,
+                    GestureConfig.DEFAULT_NOTIFICATION_SHADE_MODE
+                )
+            ),
             pointerRadiusDp = prefs.getInt(GestureConfig.KEY_POINTER_RADIUS_DP, GestureConfig.DEFAULT_POINTER_RADIUS_DP),
             pointerControlAlpha = prefs.getInt(
                 GestureConfig.KEY_POINTER_CONTROL_ALPHA,
@@ -224,23 +247,25 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    private fun saveConfig(state: SettingsState, showToast: Boolean) {
-        pendingAutoSave?.let { mainHandler.removeCallbacks(it) }
-        pendingAutoSave = null
+    private fun saveConfig(state: SettingsState) {
         latestState = state
 
         val savedAt = System.currentTimeMillis()
         val editor = getSharedPreferences(GestureConfig.PREFS_NAME, MODE_PRIVATE).edit()
         putCurrentConfig(editor, state, savedAt)
-        editor.commit()
+        editor.apply()
 
         val deviceEditor = createDeviceProtectedStorageContext()
             .getSharedPreferences(GestureConfig.PREFS_NAME, MODE_PRIVATE)
             .edit()
         putCurrentConfig(deviceEditor, state, savedAt)
-        deviceEditor.commit()
+        deviceEditor.apply()
 
-        val intent = GestureConfig.putConfigExtras(
+        sendBroadcast(buildConfigIntent(state))
+    }
+
+    private fun buildConfigIntent(state: SettingsState): Intent {
+        return GestureConfig.putConfigExtras(
             Intent(GestureConfig.ACTION_CONFIG_CHANGED),
             state.enabled,
             state.edgeWidthDp,
@@ -248,6 +273,8 @@ class MainActivity : ComponentActivity() {
             state.triggerRegionStartPercent,
             state.triggerRegionEndPercent,
             state.swipeAngleDegrees,
+            state.doubleTapTimeoutMs,
+            state.notificationShadeMode,
             state.pointerRadiusDp,
             state.pointerControlAlpha,
             state.pointerSensitivity,
@@ -273,11 +300,6 @@ class MainActivity : ComponentActivity() {
             state.pointerColorBlue,
             state.actionByKey
         )
-        sendBroadcast(intent)
-
-        if (showToast) {
-            Toast.makeText(this, t("设置已保存", "Settings saved"), Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun exportConfig(uri: Uri, state: SettingsState) {
@@ -315,6 +337,11 @@ class MainActivity : ComponentActivity() {
             .putInt(GestureConfig.KEY_TRIGGER_REGION_START_PERCENT, state.triggerRegionStartPercent)
             .putInt(GestureConfig.KEY_TRIGGER_REGION_END_PERCENT, state.triggerRegionEndPercent)
             .putInt(GestureConfig.KEY_SWIPE_ANGLE_DEGREES, state.swipeAngleDegrees)
+            .putInt(GestureConfig.KEY_DOUBLE_TAP_TIMEOUT_MS, state.doubleTapTimeoutMs)
+            .putString(
+                GestureConfig.KEY_NOTIFICATION_SHADE_MODE,
+                GestureConfig.sanitizeNotificationShadeMode(state.notificationShadeMode)
+            )
             .putInt(GestureConfig.KEY_POINTER_RADIUS_DP, state.pointerRadiusDp)
             .putInt(GestureConfig.KEY_POINTER_CONTROL_ALPHA, state.pointerControlAlpha)
             .putInt(GestureConfig.KEY_POINTER_SENSITIVITY, state.pointerSensitivity)
@@ -359,11 +386,37 @@ class MainActivity : ComponentActivity() {
         val loadedAt = prefs.getLong(GestureConfig.KEY_STATUS_LOADED_AT, 0L)
         val startedAt = prefs.getLong(GestureConfig.KEY_STATUS_STARTED_AT, 0L)
         val message = prefs.getString(GestureConfig.KEY_STATUS_LAST_MESSAGE, "") ?: ""
+        val gesturesEnabled = latestState?.enabled
+            ?: getSharedPreferences(GestureConfig.PREFS_NAME, MODE_PRIVATE)
+                .getBoolean(GestureConfig.KEY_ENABLED, GestureConfig.DEFAULT_ENABLED)
+        val now = SystemClock.elapsedRealtime()
+        fun isFreshBootStatus(value: Long): Boolean {
+            return value > 0L && value <= now
+        }
+
+        val inputFilterStarted = gesturesEnabled && isFreshBootStatus(startedAt)
+        val systemServerLoaded = isFreshBootStatus(loadedAt)
         return when {
-            startedAt > 0L -> HookStatus(t("输入过滤器已启动 / $message", "Input filter started / $message"), true)
-            loadedAt > 0L -> HookStatus(t("system_server 已加载，等待输入过滤器", "system_server loaded, waiting for input filter"), true)
-            moduleLoadedInApp -> HookStatus(t("LSPosed 已加载模块", "LSPosed module loaded"), true)
-            else -> HookStatus(t("未检测到加载；启用 LSPosed 后需重启", "Module not detected; reboot after enabling it in LSPosed"), false)
+            inputFilterStarted -> HookStatus(
+                text = t("LSPosed 输入过滤器已启动 / $message", "LSPosed input filter started / $message"),
+                active = true,
+                enhancedActive = true
+            )
+            systemServerLoaded -> HookStatus(
+                text = t("system_server 已加载，等待输入过滤器", "system_server loaded, waiting for input filter"),
+                active = true,
+                enhancedActive = false
+            )
+            moduleLoadedInApp -> HookStatus(
+                text = t("LSPosed 已加载模块", "LSPosed module loaded"),
+                active = true,
+                enhancedActive = false
+            )
+            else -> HookStatus(
+                text = t("未检测到加载；启用 LSPosed 后需重启", "Module not detected; reboot after enabling it in LSPosed"),
+                active = false,
+                enhancedActive = false
+            )
         }
     }
 }
@@ -379,6 +432,8 @@ private data class SettingsState(
     val triggerRegionStartPercent: Int,
     val triggerRegionEndPercent: Int,
     val swipeAngleDegrees: Int,
+    val doubleTapTimeoutMs: Int,
+    val notificationShadeMode: String,
     val pointerRadiusDp: Int,
     val pointerControlAlpha: Int,
     val pointerSensitivity: Int,
@@ -428,6 +483,8 @@ private data class SettingsState(
             .put("triggerRegionStartPercent", triggerRegionStartPercent)
             .put("triggerRegionEndPercent", triggerRegionEndPercent)
             .put("swipeAngleDegrees", swipeAngleDegrees)
+            .put("doubleTapTimeoutMs", doubleTapTimeoutMs)
+            .put("notificationShadeMode", notificationShadeMode)
             .put("pointerRadiusDp", pointerRadiusDp)
             .put("pointerControlAlpha", pointerControlAlpha)
             .put("pointerSensitivity", pointerSensitivity)
@@ -461,6 +518,8 @@ private data class SettingsState(
             triggerRegionStartPercent = GestureConfig.DEFAULT_TRIGGER_REGION_START_PERCENT,
             triggerRegionEndPercent = GestureConfig.DEFAULT_TRIGGER_REGION_END_PERCENT,
             swipeAngleDegrees = GestureConfig.DEFAULT_SWIPE_ANGLE_DEGREES,
+            doubleTapTimeoutMs = GestureConfig.DEFAULT_DOUBLE_TAP_TIMEOUT_MS,
+            notificationShadeMode = GestureConfig.DEFAULT_NOTIFICATION_SHADE_MODE,
             pointerRadiusDp = GestureConfig.DEFAULT_POINTER_RADIUS_DP,
             pointerControlAlpha = GestureConfig.DEFAULT_POINTER_CONTROL_ALPHA,
             pointerSensitivity = GestureConfig.DEFAULT_POINTER_SENSITIVITY,
@@ -524,6 +583,16 @@ private data class SettingsState(
                     GestureConfig.DEFAULT_TRIGGER_REGION_END_PERCENT
                 ),
                 swipeAngleDegrees = json.optInt("swipeAngleDegrees", GestureConfig.DEFAULT_SWIPE_ANGLE_DEGREES),
+                doubleTapTimeoutMs = json.optInt(
+                    "doubleTapTimeoutMs",
+                    GestureConfig.DEFAULT_DOUBLE_TAP_TIMEOUT_MS
+                ),
+                notificationShadeMode = GestureConfig.sanitizeNotificationShadeMode(
+                    json.optString(
+                        "notificationShadeMode",
+                        GestureConfig.DEFAULT_NOTIFICATION_SHADE_MODE
+                    )
+                ),
                 pointerRadiusDp = json.optInt("pointerRadiusDp", GestureConfig.DEFAULT_POINTER_RADIUS_DP),
                 pointerControlAlpha = json.optInt(
                     "pointerControlAlpha",
@@ -563,7 +632,8 @@ private data class SettingsState(
 
 private data class HookStatus(
     val text: String,
-    val active: Boolean
+    val active: Boolean,
+    val enhancedActive: Boolean
 )
 
 private data class SettingsPage(
@@ -605,11 +675,11 @@ private fun EdgeGestureTheme(content: @Composable () -> Unit) {
 private fun SettingsScreen(
     settings: SettingsState,
     onSettingsChange: (SettingsState) -> Unit,
-    onSave: () -> Unit,
     onReset: () -> Unit,
     onExport: (Uri) -> Unit,
     onImport: (Uri) -> Unit,
-    hookStatus: HookStatus
+    hookStatus: HookStatus,
+    onShowGuide: () -> Unit
 ) {
     val pages = remember {
         listOf(
@@ -631,7 +701,6 @@ private fun SettingsScreen(
     ) { uri ->
         uri?.let(onImport)
     }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -655,9 +724,6 @@ private fun SettingsScreen(
                     IconButton(onClick = onReset) {
                         Icon(Icons.Rounded.Restore, contentDescription = t("恢复推荐值", "Restore recommended values"))
                     }
-                    IconButton(onClick = onSave) {
-                        Icon(Icons.Rounded.Save, contentDescription = t("保存设置", "Save settings"))
-                    }
                 }
             )
         },
@@ -671,7 +737,17 @@ private fun SettingsScreen(
                         selected = pagerState.currentPage == index,
                         onClick = {
                             coroutineScope.launch {
-                                pagerState.animateScrollToPage(index)
+                                if (abs(pagerState.currentPage - index) <= 1) {
+                                    pagerState.animateScrollToPage(
+                                        page = index,
+                                        animationSpec = tween(
+                                            durationMillis = 260,
+                                            easing = FastOutSlowInEasing
+                                        )
+                                    )
+                                } else {
+                                    pagerState.scrollToPage(index)
+                                }
                             }
                         },
                         icon = { Icon(page.icon, contentDescription = null) },
@@ -686,41 +762,49 @@ private fun SettingsScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier
-                    .fillMaxSize()
-            ) { pageIndex ->
-                when (pageIndex) {
-                    1 -> TriggerPage(
-                        settings = settings,
-                        onSettingsChange = onSettingsChange,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 18.dp, vertical = 16.dp)
-                    )
-                    2 -> PointerPage(
-                        settings = settings,
-                        onSettingsChange = onSettingsChange,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 18.dp, vertical = 16.dp)
-                    )
-                    else -> {
-                        Column(
+            Box(Modifier.fillMaxSize()) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                ) { pageIndex ->
+                    when (pageIndex) {
+                        1 -> TriggerPage(
+                            settings = settings,
+                            onSettingsChange = onSettingsChange,
+                            hookStatus = hookStatus,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 18.dp, vertical = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(14.dp)
-                        ) {
-                            when (pageIndex) {
-                                0 -> OverviewPage(settings, onSettingsChange, hookStatus)
-                                3 -> ActionPage(settings, onSettingsChange)
+                                .padding(horizontal = 18.dp, vertical = 16.dp)
+                        )
+                        2 -> PointerPage(
+                            settings = settings,
+                            onSettingsChange = onSettingsChange,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 18.dp, vertical = 16.dp)
+                        )
+                        else -> {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 18.dp),
+                                contentPadding = PaddingValues(vertical = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                item {
+                                    when (pageIndex) {
+                                        0 -> OverviewPage(settings, onSettingsChange, hookStatus, onShowGuide)
+                                        3 -> ActionPage(settings, onSettingsChange)
+                                    }
+                                }
+                                item { Spacer(Modifier.height(24.dp)) }
                             }
-                            Spacer(Modifier.height(24.dp))
                         }
                     }
+                }
+                if (pagerState.currentPage == 1) {
+                    LiveTriggerPreview(settings, hookStatus.active)
                 }
             }
         }
@@ -731,9 +815,54 @@ private fun SettingsScreen(
 private fun OverviewPage(
     settings: SettingsState,
     onSettingsChange: (SettingsState) -> Unit,
-    hookStatus: HookStatus
+    hookStatus: HookStatus,
+    onShowGuide: () -> Unit
 ) {
+    val context = LocalContext.current
+    var showSupportDialog by remember { mutableStateOf(false) }
+
     StatusCard(settings, hookStatus, onSettingsChange)
+
+    SettingsSection(t("新手指南", "Quick Start"), Icons.Rounded.TouchApp) {
+        Text(
+            text = t(
+                "第一次使用建议先看 30 秒指南：选择普通模式或增强模式，理解上划指针、摇杆光标、取消圆和保存配置。",
+                "New users should start with a short guide covering Standard/Enhanced mode, swipe-up pointer, Tracker + Cursor, cancel circles, and saving settings."
+            ),
+            modifier = Modifier.padding(16.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedButton(
+            onClick = onShowGuide,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text(t("打开新手指南", "Open Guide"))
+        }
+    }
+
+    SettingsSection(
+        title = t("普通模式（无障碍）", "Standard Mode (Accessibility)"),
+        icon = Icons.Rounded.TouchApp
+    ) {
+        Text(
+            text = t(
+                "免 Root 的基础模式，依赖系统无障碍服务。适合普通用户使用；如果 LSPosed 增强模式已启动，无障碍触摸层会自动暂停，避免冲突。",
+                "A no-root basic mode powered by Android Accessibility. It is suitable for normal users; if the LSPosed enhanced engine is active, the accessibility touch layer pauses automatically to avoid conflicts."
+            ),
+            modifier = Modifier.padding(16.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedButton(
+            onClick = {
+                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            },
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text(t("打开无障碍设置", "Open Accessibility Settings"))
+        }
+    }
 
     SettingsSection(
         title = t("当前模式", "Current Mode"),
@@ -745,7 +874,7 @@ private fun OverviewPage(
             valueText = "${settings.edgeWidthDp}dp",
             description = t("越宽越容易触发，也越容易靠近系统侧滑区域。", "Wider is easier to trigger, but closer to the system back gesture area."),
             value = settings.edgeWidthDp,
-            range = 8..56,
+            range = GestureConfig.ACCESSIBILITY_MIN_EDGE_WIDTH_DP..GestureConfig.ACCESSIBILITY_MAX_EDGE_WIDTH_DP,
             onValueChange = { onSettingsChange(settings.copy(edgeWidthDp = it)) }
         )
         SettingSlider(
@@ -768,6 +897,322 @@ private fun OverviewPage(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+
+    SettingsSection(t("关于", "About"), Icons.Rounded.Settings) {
+        Text(
+            text = t(
+                "EdgeGesture 是一个单手边缘手势工具，支持普通无障碍模式和 LSPosed 增强模式。",
+                "EdgeGesture is a one-handed edge gesture tool with Accessibility mode and LSPosed enhanced mode."
+            ),
+            modifier = Modifier.padding(16.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedButton(
+            onClick = {
+                context.startActivity(
+                    Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Fieldtrans/EdgeGesture"))
+                )
+            },
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text(t("打开 GitHub 项目主页", "Open GitHub"))
+        }
+    }
+
+    SettingsSection(t("支持开发", "Support"), Icons.Rounded.Palette) {
+        Text(
+            text = t(
+                "如果 EdgeGesture 对你有帮助，可以自愿支持后续维护。打赏不会解锁额外功能。",
+                "If EdgeGesture helps you, you can voluntarily support ongoing development. Donations do not unlock extra features."
+            ),
+            modifier = Modifier.padding(16.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedButton(
+            onClick = { showSupportDialog = true },
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text(t("打开打赏码", "Show QR Code"))
+        }
+    }
+
+    if (showSupportDialog) {
+        SupportDevelopmentDialog(
+            onDismiss = { showSupportDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun SupportDevelopmentDialog(
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(t("支持开发", "Support Development")) },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = t(
+                        "感谢支持。这个入口完全自愿，不影响任何功能使用。",
+                        "Thank you for the support. This is completely voluntary and does not affect any feature."
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color.White,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.donate_qr),
+                        contentDescription = t("打赏二维码", "Donation QR code"),
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(t("关闭", "Close"))
+            }
+        }
+    )
+}
+
+@Composable
+private fun NewUserGuideDialog(
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(t("操作教程", "Tutorial")) },
+        text = {
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(Modifier.fillMaxWidth()) {
+                    GuideTutorialRow(
+                        type = GuideIllustrationType.EdgeSwipe,
+                        title = t("斜上划调出", "Swipe Diagonally Up"),
+                        body = t(
+                            "从左右触发区向屏幕内侧斜上划，出现直线箭头或摇杆光标。",
+                            "Swipe diagonally up from a side trigger area to show the line pointer or cursor."
+                        )
+                    )
+                    GuideDivider()
+                    GuideTutorialRow(
+                        type = GuideIllustrationType.Control,
+                        title = t("小范围控制", "Small-Area Control"),
+                        body = t(
+                            "拇指在控制区内移动，箭头尖或光标会映射到远处。",
+                            "Move your thumb in the control area; the pointer maps to distant targets."
+                        )
+                    )
+                    GuideDivider()
+                    GuideTutorialRow(
+                        type = GuideIllustrationType.ReleaseTap,
+                        title = t("松手点击", "Release to Tap"),
+                        body = t(
+                            "箭头尖或光标圆心对准目标，松手点击该位置。",
+                            "Aim the arrow tip or cursor center, then release to tap there."
+                        )
+                    )
+                    GuideDivider()
+                    GuideTutorialRow(
+                        type = GuideIllustrationType.Notification,
+                        title = t("下拉通知栏", "Notifications"),
+                        body = t(
+                            "移动到顶部会显示预动画，可设置碰到下拉或松手下拉。",
+                            "Moving to the top shows a preview; choose pull on touch or release."
+                        )
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text(t("开始使用", "Start"))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(t("稍后再看", "Later"))
+            }
+        }
+    )
+}
+
+@Composable
+private fun GuideTutorialRow(
+    type: GuideIllustrationType,
+    title: String,
+    body: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        GuidePhoneIllustration(type)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Text(
+            text = ">",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+        )
+    }
+}
+
+@Composable
+private fun GuideDivider() {
+    Spacer(
+        Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .padding(start = 96.dp)
+            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
+    )
+}
+
+private enum class GuideIllustrationType {
+    EdgeSwipe,
+    Control,
+    ReleaseTap,
+    Notification
+}
+
+@Composable
+private fun GuidePhoneIllustration(type: GuideIllustrationType) {
+    val primary = MaterialTheme.colorScheme.primary
+    val outline = MaterialTheme.colorScheme.outline.copy(alpha = 0.65f)
+    val fill = MaterialTheme.colorScheme.surface
+    val screen = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
+
+    Canvas(
+        modifier = Modifier.size(width = 58.dp, height = 78.dp)
+    ) {
+        val phoneW = size.width * 0.72f
+        val phoneH = size.height * 0.92f
+        val left = (size.width - phoneW) / 2f
+        val top = (size.height - phoneH) / 2f
+        val radius = 12.dp.toPx()
+        val innerPad = 8.dp.toPx()
+        val innerLeft = left + innerPad
+        val innerTop = top + innerPad
+        val innerW = phoneW - innerPad * 2f
+        val innerH = phoneH - innerPad * 2f
+
+        drawRoundRect(
+            color = fill,
+            topLeft = Offset(left, top),
+            size = Size(phoneW, phoneH),
+            cornerRadius = CornerRadius(radius, radius)
+        )
+        drawRoundRect(
+            color = outline,
+            topLeft = Offset(left, top),
+            size = Size(phoneW, phoneH),
+            cornerRadius = CornerRadius(radius, radius),
+            style = Stroke(width = 2.dp.toPx())
+        )
+
+        when (type) {
+            GuideIllustrationType.EdgeSwipe -> {
+                drawRoundRect(
+                    color = screen,
+                    topLeft = Offset(innerLeft, innerTop),
+                    size = Size(innerW, innerH),
+                    cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx())
+                )
+                drawRoundRect(
+                    color = primary.copy(alpha = 0.16f),
+                    topLeft = Offset(left + phoneW - 5.dp.toPx(), top + phoneH * 0.22f),
+                    size = Size(5.dp.toPx(), phoneH * 0.56f),
+                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                )
+                val start = Offset(left + phoneW - 2.dp.toPx(), top + phoneH * 0.72f)
+                val end = Offset(left + phoneW * 0.45f, top + phoneH * 0.36f)
+                drawLine(primary.copy(alpha = 0.34f), start, end, strokeWidth = 5.dp.toPx(), cap = StrokeCap.Round)
+                drawCircle(primary, radius = 4.dp.toPx(), center = end)
+                drawCircle(primary.copy(alpha = 0.22f), radius = 10.dp.toPx(), center = start)
+            }
+            GuideIllustrationType.Control -> {
+                drawRoundRect(
+                    color = screen,
+                    topLeft = Offset(innerLeft, innerTop),
+                    size = Size(innerW, innerH),
+                    cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx())
+                )
+                val control = Offset(left + phoneW * 0.32f, top + phoneH * 0.72f)
+                val end = Offset(left + phoneW * 0.7f, top + phoneH * 0.28f)
+                drawCircle(primary.copy(alpha = 0.16f), radius = 13.dp.toPx(), center = control)
+                drawLine(primary.copy(alpha = 0.35f), control, end, strokeWidth = 4.dp.toPx(), cap = StrokeCap.Round)
+                drawLine(primary, Offset(end.x - 5.dp.toPx(), end.y + 8.dp.toPx()), end, strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                drawLine(primary, Offset(end.x - 9.dp.toPx(), end.y + 2.dp.toPx()), end, strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                drawCircle(primary, radius = 3.5.dp.toPx(), center = control)
+                drawCircle(primary, radius = 4.dp.toPx(), center = end)
+            }
+            GuideIllustrationType.ReleaseTap -> {
+                drawRoundRect(
+                    color = screen,
+                    topLeft = Offset(innerLeft, innerTop),
+                    size = Size(innerW, innerH),
+                    cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx())
+                )
+                val anchor = Offset(left + phoneW * 0.05f, top + phoneH * 0.62f)
+                val tip = Offset(left + phoneW * 0.72f, top + phoneH * 0.38f)
+                drawCircle(primary.copy(alpha = 0.14f), radius = 14.dp.toPx(), center = anchor)
+                drawCircle(primary.copy(alpha = 0.18f), radius = 10.dp.toPx(), center = tip)
+                drawLine(primary.copy(alpha = 0.38f), anchor, tip, strokeWidth = 4.dp.toPx(), cap = StrokeCap.Round)
+                drawLine(primary, Offset(tip.x - 7.dp.toPx(), tip.y + 5.dp.toPx()), tip, strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                drawLine(primary, Offset(tip.x - 8.dp.toPx(), tip.y - 2.dp.toPx()), tip, strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                drawCircle(primary, radius = 3.5.dp.toPx(), center = tip)
+            }
+            GuideIllustrationType.Notification -> {
+                drawRoundRect(
+                    color = screen,
+                    topLeft = Offset(innerLeft, innerTop),
+                    size = Size(innerW, innerH),
+                    cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx())
+                )
+                drawRoundRect(
+                    color = primary.copy(alpha = 0.18f),
+                    topLeft = Offset(innerLeft, innerTop),
+                    size = Size(innerW, 7.dp.toPx()),
+                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                )
+                val anchor = Offset(left + phoneW * 0.74f, top + phoneH * 0.78f)
+                val tip = Offset(left + phoneW * 0.5f, innerTop + 2.dp.toPx())
+                drawLine(primary.copy(alpha = 0.34f), anchor, tip, strokeWidth = 4.dp.toPx(), cap = StrokeCap.Round)
+                drawLine(primary, Offset(tip.x - 7.dp.toPx(), tip.y + 8.dp.toPx()), tip, strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                drawLine(primary, Offset(tip.x + 7.dp.toPx(), tip.y + 8.dp.toPx()), tip, strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                drawCircle(primary.copy(alpha = 0.2f), radius = 11.dp.toPx(), center = tip)
+                drawCircle(primary, radius = 4.dp.toPx(), center = tip)
+            }
+        }
     }
 }
 
@@ -822,68 +1267,123 @@ private fun StatusCard(
 private fun TriggerPage(
     settings: SettingsState,
     onSettingsChange: (SettingsState) -> Unit,
+    hookStatus: HookStatus,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        EdgeRangePreview(settings)
+        EdgeRangePreview(settings, hookStatus.active)
 
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .verticalScroll(rememberScrollState()),
+                .weight(1f),
+            contentPadding = PaddingValues(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            SettingsSection(t("触发区域", "Trigger Area"), Icons.Rounded.TouchApp) {
-                SettingSlider(
-                    title = t("区域起点", "Area Start"),
-                    valueText = "${settings.triggerRegionStartPercent}%",
-                    description = t("从屏幕上方开始计算。", "Measured from the top of the screen."),
-                    value = settings.triggerRegionStartPercent,
-                    range = 0..100,
-                    onValueChange = { onSettingsChange(settings.copy(triggerRegionStartPercent = it)) }
-                )
-                SettingSlider(
-                    title = t("区域终点", "Area End"),
-                    valueText = "${settings.triggerRegionEndPercent}%",
-                    description = t("区域终点可以低于起点，内部会自动取有效范围。", "The end can be lower than the start; the valid range is normalized automatically."),
-                    value = settings.triggerRegionEndPercent,
-                    range = 0..100,
-                    onValueChange = { onSettingsChange(settings.copy(triggerRegionEndPercent = it)) }
-                )
-                SettingSlider(
-                    title = t("边缘宽度", "Edge Width"),
-                    valueText = "${settings.edgeWidthDp}dp",
-                    description = t("推荐先保持 18dp 左右，避免系统返回冲突。", "Start around 18dp to avoid conflicts with the system back gesture."),
-                    value = settings.edgeWidthDp,
-                    range = 8..56,
-                    onValueChange = { onSettingsChange(settings.copy(edgeWidthDp = it)) }
-                )
+            item {
+                SettingsSection(t("触发区域", "Trigger Area"), Icons.Rounded.TouchApp) {
+                    SettingSlider(
+                        title = t("区域起点", "Area Start"),
+                        valueText = "${settings.triggerRegionStartPercent}%",
+                        description = t("从屏幕上方开始计算。", "Measured from the top of the screen."),
+                        value = settings.triggerRegionStartPercent,
+                        range = 0..100,
+                        onValueChange = { onSettingsChange(settings.copy(triggerRegionStartPercent = it)) }
+                    )
+                    SettingSlider(
+                        title = t("区域终点", "Area End"),
+                        valueText = "${settings.triggerRegionEndPercent}%",
+                        description = t("区域终点可以低于起点，内部会自动取有效范围。", "The end can be lower than the start; the valid range is normalized automatically."),
+                        value = settings.triggerRegionEndPercent,
+                        range = 0..100,
+                        onValueChange = { onSettingsChange(settings.copy(triggerRegionEndPercent = it)) }
+                    )
+                    SettingSlider(
+                        title = t("边缘宽度", "Edge Width"),
+                        valueText = "${settings.edgeWidthDp}dp",
+                        description = t("推荐先保持 18dp 左右，避免系统返回冲突。", "Start around 18dp to avoid conflicts with the system back gesture."),
+                        value = settings.edgeWidthDp,
+                        range = GestureConfig.ACCESSIBILITY_MIN_EDGE_WIDTH_DP..GestureConfig.ACCESSIBILITY_MAX_EDGE_WIDTH_DP,
+                        onValueChange = { onSettingsChange(settings.copy(edgeWidthDp = it)) }
+                    )
+                }
             }
 
-            SettingsSection(t("高级触发", "Advanced Trigger"), Icons.Rounded.Tune) {
-                SettingSlider(
-                    title = t("上划触发距离", "Swipe-Up Distance"),
-                    valueText = "${settings.swipeDistanceDp}dp",
-                    description = t("距离越大，越不容易误触。", "A longer distance reduces accidental triggers."),
-                    value = settings.swipeDistanceDp,
-                    range = 40..180,
-                    onValueChange = { onSettingsChange(settings.copy(swipeDistanceDp = it)) }
-                )
-                SettingSlider(
-                    title = t("方向允许偏角", "Allowed Angle"),
-                    valueText = "±${settings.swipeAngleDegrees}°",
-                    description = t("越小越严格，越不容易和横向侧滑混淆。", "Smaller values are stricter and reduce horizontal gesture conflicts."),
-                    value = settings.swipeAngleDegrees,
-                    range = 5..85,
-                    onValueChange = { onSettingsChange(settings.copy(swipeAngleDegrees = it)) }
-                )
+            item {
+                SettingsSection(t("高级触发", "Advanced Trigger"), Icons.Rounded.Tune) {
+                    SettingSlider(
+                        title = t("上划触发距离", "Swipe-Up Distance"),
+                        valueText = "${settings.swipeDistanceDp}dp",
+                        description = t("距离越大，越不容易误触。", "A longer distance reduces accidental triggers."),
+                        value = settings.swipeDistanceDp,
+                        range = 40..180,
+                        onValueChange = { onSettingsChange(settings.copy(swipeDistanceDp = it)) }
+                    )
+                    SettingSlider(
+                        title = t("方向允许偏角", "Allowed Angle"),
+                        valueText = "±${settings.swipeAngleDegrees}°",
+                        description = t("越小越严格，越不容易和横向侧滑混淆。", "Smaller values are stricter and reduce horizontal gesture conflicts."),
+                        value = settings.swipeAngleDegrees,
+                        range = 5..85,
+                        onValueChange = { onSettingsChange(settings.copy(swipeAngleDegrees = it)) }
+                    )
+                }
             }
-            Spacer(Modifier.height(24.dp))
         }
+    }
+}
+
+@Composable
+private fun LiveTriggerPreview(settings: SettingsState, enhancedPreview: Boolean) {
+    val color = settings.pointerColor
+    Canvas(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        val startPercent = minOf(settings.triggerRegionStartPercent, settings.triggerRegionEndPercent)
+            .coerceIn(0, 100) / 100f
+        val endPercent = maxOf(settings.triggerRegionStartPercent, settings.triggerRegionEndPercent)
+            .coerceIn(0, 100) / 100f
+        val top = size.height * startPercent
+        val bottom = size.height * endPercent
+        val activeHeight = (bottom - top).coerceAtLeast(1f)
+        val edgeWidth = settings.edgeWidthDp.dp.toPx()
+            .coerceAtLeast(GestureConfig.ACCESSIBILITY_MIN_EDGE_WIDTH_DP.dp.toPx())
+            .coerceAtMost(GestureConfig.ACCESSIBILITY_MAX_EDGE_WIDTH_DP.dp.toPx())
+            .coerceAtMost(size.width * GestureConfig.ACCESSIBILITY_MAX_EDGE_WIDTH_SCREEN_PERCENT)
+        val systemGap = if (enhancedPreview) {
+            0f
+        } else {
+            GestureConfig.ACCESSIBILITY_SYSTEM_GESTURE_GAP_DP.dp.toPx()
+                .coerceAtMost(size.width * GestureConfig.ACCESSIBILITY_MAX_SYSTEM_GESTURE_GAP_SCREEN_PERCENT)
+        }
+        val previewColor = color.copy(alpha = 0.18f)
+        val edgeColor = color.copy(alpha = 0.36f)
+
+        drawRect(
+            color = previewColor,
+            topLeft = Offset(systemGap, top),
+            size = Size(edgeWidth, activeHeight)
+        )
+        drawRect(
+            color = previewColor,
+            topLeft = Offset(size.width - systemGap - edgeWidth, top),
+            size = Size(edgeWidth, activeHeight)
+        )
+        drawLine(
+            color = edgeColor,
+            start = Offset(systemGap + edgeWidth, top),
+            end = Offset(systemGap + edgeWidth, bottom),
+            strokeWidth = 1.dp.toPx()
+        )
+        drawLine(
+            color = edgeColor,
+            start = Offset(size.width - systemGap - edgeWidth, top),
+            end = Offset(size.width - systemGap - edgeWidth, bottom),
+            strokeWidth = 1.dp.toPx()
+        )
     }
 }
 
@@ -919,60 +1419,63 @@ private fun PointerPage(
     ) {
         PointerPreview(settings)
 
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .verticalScroll(rememberScrollState()),
+                .weight(1f),
+            contentPadding = PaddingValues(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            SettingsSection(t("指针设置", "Pointer Settings"), Icons.Rounded.RadioButtonChecked) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
-                ) {
-                    FilterChip(
-                        selected = subPage == PointerSubPage.Line,
-                        onClick = {
-                            subPage = PointerSubPage.Line
-                            onSettingsChange(settings.copy(pointerControlStyle = GestureConfig.POINTER_STYLE_LINE_ARROW))
-                        },
-                        label = { Text(t("直线", "Line")) },
-                        leadingIcon = {
-                            Icon(Icons.Rounded.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
-                        }
-                    )
-                    FilterChip(
-                        selected = subPage == PointerSubPage.Tracker,
-                        onClick = {
-                            subPage = PointerSubPage.Tracker
-                            onSettingsChange(settings.copy(pointerControlStyle = GestureConfig.POINTER_STYLE_TRACKER_CURSOR))
-                        },
-                        label = { Text(t("摇杆", "Tracker")) },
-                        leadingIcon = {
-                            Icon(Icons.Rounded.RadioButtonChecked, contentDescription = null, modifier = Modifier.size(18.dp))
-                        }
-                    )
-                    FilterChip(
-                        selected = subPage == PointerSubPage.Appearance,
-                        onClick = { subPage = PointerSubPage.Appearance },
-                        label = { Text(t("外观", "Appearance")) },
-                        leadingIcon = {
-                            Icon(Icons.Rounded.Palette, contentDescription = null, modifier = Modifier.size(18.dp))
-                        }
-                    )
+            item {
+                SettingsSection(t("指针设置", "Pointer Settings"), Icons.Rounded.RadioButtonChecked) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                    ) {
+                        FilterChip(
+                            selected = subPage == PointerSubPage.Line,
+                            onClick = {
+                                subPage = PointerSubPage.Line
+                                onSettingsChange(settings.copy(pointerControlStyle = GestureConfig.POINTER_STYLE_LINE_ARROW))
+                            },
+                            label = { Text(t("直线", "Line")) },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
+                            }
+                        )
+                        FilterChip(
+                            selected = subPage == PointerSubPage.Tracker,
+                            onClick = {
+                                subPage = PointerSubPage.Tracker
+                                onSettingsChange(settings.copy(pointerControlStyle = GestureConfig.POINTER_STYLE_TRACKER_CURSOR))
+                            },
+                            label = { Text(t("摇杆", "Tracker")) },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.RadioButtonChecked, contentDescription = null, modifier = Modifier.size(18.dp))
+                            }
+                        )
+                        FilterChip(
+                            selected = subPage == PointerSubPage.Appearance,
+                            onClick = { subPage = PointerSubPage.Appearance },
+                            label = { Text(t("外观", "Appearance")) },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.Palette, contentDescription = null, modifier = Modifier.size(18.dp))
+                            }
+                        )
+                    }
                 }
             }
 
-            when (subPage) {
-                PointerSubPage.Line -> LinePointerPage(settings, onSettingsChange)
-                PointerSubPage.Tracker -> TrackerPointerPage(settings, onSettingsChange)
-                PointerSubPage.Appearance -> AppearancePage(settings, onSettingsChange)
+            item {
+                when (subPage) {
+                    PointerSubPage.Line -> LinePointerPage(settings, onSettingsChange)
+                    PointerSubPage.Tracker -> TrackerPointerPage(settings, onSettingsChange)
+                    PointerSubPage.Appearance -> AppearancePage(settings, onSettingsChange)
+                }
             }
-            Spacer(Modifier.height(24.dp))
         }
     }
 }
@@ -1205,6 +1708,48 @@ private fun ActionPage(
         }
     }
 
+    SettingsSection(t("动作参数", "Action Timing"), Icons.Rounded.Tune) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(t("通知栏触发方式", "Notification Trigger"), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = t(
+                    "预动画保持不变。选择碰到顶部立刻下拉，或松手点击顶部后再下拉。",
+                    "The preview animation stays unchanged. Choose instant pull-down on top touch, or pull down after releasing on the status bar."
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState())
+            ) {
+                GestureConfig.notificationShadeModes.forEach { mode ->
+                    FilterChip(
+                        selected = settings.notificationShadeMode == mode,
+                        onClick = { onSettingsChange(settings.copy(notificationShadeMode = mode)) },
+                        label = { Text(notificationShadeModeLabel(mode)) }
+                    )
+                }
+            }
+        }
+        SettingSlider(
+            title = t("双击等待时间", "Double-Tap Wait"),
+            valueText = "${settings.doubleTapTimeoutMs}ms",
+            description = t(
+                "用于判断两次点击是否属于双击；普通边缘点击会优先穿透。",
+                "Used to decide whether two taps count as a double-tap; normal edge taps pass through first."
+            ),
+            value = settings.doubleTapTimeoutMs,
+            range = 120..320,
+            onValueChange = { onSettingsChange(settings.copy(doubleTapTimeoutMs = it)) }
+        )
+    }
+
     SettingsSection(t("${edgeLabel(selectedEdge)}动作", "${edgeLabel(selectedEdge)} Actions"), Icons.Rounded.TouchApp) {
         GestureConfig.gestures.forEach { gesture ->
             val key = GestureConfig.actionKey(selectedEdge, gesture)
@@ -1310,7 +1855,10 @@ private fun SettingSlider(
         Slider(
             value = value.coerceIn(range.first, range.last).toFloat(),
             onValueChange = { next ->
-                onValueChange(next.roundToInt().coerceIn(range.first, range.last))
+                val rounded = next.roundToInt().coerceIn(range.first, range.last)
+                if (rounded != value) {
+                    onValueChange(rounded)
+                }
             },
             valueRange = range.first.toFloat()..range.last.toFloat()
         )
@@ -1481,8 +2029,12 @@ private fun PointerPreview(settings: SettingsState) {
 }
 
 @Composable
-private fun EdgeRangePreview(settings: SettingsState) {
-    SettingsSection(t("范围预览", "Range Preview"), Icons.Rounded.TouchApp) {
+private fun EdgeRangePreview(settings: SettingsState, enhancedMode: Boolean) {
+    SettingsSection(t("手势预览", "Gesture Preview"), Icons.Rounded.TouchApp) {
+        val systemColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.34f)
+        val edgeColor = settings.pointerColor
+        val phoneColor = MaterialTheme.colorScheme.surface
+        val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.65f)
         Surface(
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f),
             shape = RoundedCornerShape(8.dp),
@@ -1490,77 +2042,183 @@ private fun EdgeRangePreview(settings: SettingsState) {
                 .fillMaxWidth()
                 .padding(12.dp)
         ) {
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp)
-                    .padding(10.dp)
+            Column(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                val phoneW = size.width * 0.42f
-                val phoneH = size.height * 0.82f
-                val left = (size.width - phoneW) / 2f
-                val top = (size.height - phoneH) / 2f
-                val right = left + phoneW
-                val bottom = top + phoneH
-                val edgePx = settings.edgeWidthDp.dp.toPx().coerceAtMost(phoneW * 0.16f)
-                val distancePx = settings.swipeDistanceDp.dp.toPx().coerceAtMost(phoneW * 0.58f)
-                val start = minOf(settings.triggerRegionStartPercent, settings.triggerRegionEndPercent)
-                    .coerceIn(0, 100) / 100f
-                val end = maxOf(settings.triggerRegionStartPercent, settings.triggerRegionEndPercent)
-                    .coerceIn(0, 100) / 100f
-                val activeTop = top + phoneH * start
-                val activeBottom = top + phoneH * end
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(190.dp)
+                        .padding(10.dp)
+                ) {
+                    val phoneW = size.width * 0.34f
+                    val phoneH = size.height * 0.82f
+                    val gap = size.width * 0.08f
+                    val firstLeft = (size.width - phoneW * 2f - gap) / 2f
+                    val top = (size.height - phoneH) / 2f
 
-                drawRoundRect(
-                    color = Color(0xFFFAFCFB),
-                    topLeft = Offset(left, top),
-                    size = Size(phoneW, phoneH),
-                    cornerRadius = CornerRadius(18.dp.toPx(), 18.dp.toPx())
-                )
-                val inactive = Color(0xFFFFD642).copy(alpha = 0.32f)
-                drawRect(inactive, Offset(left, top), Size(edgePx, phoneH))
-                drawRect(inactive, Offset(right - edgePx, top), Size(edgePx, phoneH))
-                drawRect(inactive, Offset(left, top), Size(phoneW, edgePx))
-                drawRect(inactive, Offset(left, bottom - edgePx), Size(phoneW, edgePx))
-                drawRect(
-                    color = Color(0xFF00C853).copy(alpha = 0.72f),
-                    topLeft = Offset(right - edgePx, activeTop),
-                    size = Size(edgePx, activeBottom - activeTop)
-                )
-                drawRoundRect(
-                    color = Color(0xFF39423D),
-                    topLeft = Offset(left, top),
-                    size = Size(phoneW, phoneH),
-                    cornerRadius = CornerRadius(18.dp.toPx(), 18.dp.toPx()),
-                    style = Stroke(width = 1.4.dp.toPx())
-                )
+                    fun drawEnginePreview(left: Float, lsposed: Boolean) {
+                        val right = left + phoneW
+                        val edgePx = settings.edgeWidthDp.dp.toPx()
+                            .coerceAtLeast(GestureConfig.ACCESSIBILITY_MIN_EDGE_WIDTH_DP.dp.toPx())
+                            .coerceAtMost(GestureConfig.ACCESSIBILITY_MAX_EDGE_WIDTH_DP.dp.toPx())
+                            .coerceAtMost(phoneW * GestureConfig.ACCESSIBILITY_MAX_EDGE_WIDTH_SCREEN_PERCENT)
+                        val systemGapPx = if (lsposed) {
+                            0f
+                        } else {
+                            GestureConfig.ACCESSIBILITY_SYSTEM_GESTURE_GAP_DP.dp.toPx()
+                                .coerceAtMost(phoneW * GestureConfig.ACCESSIBILITY_MAX_SYSTEM_GESTURE_GAP_SCREEN_PERCENT)
+                        }
+                        val distancePx = settings.swipeDistanceDp.dp.toPx().coerceAtMost(phoneW * 0.52f)
+                        val start = minOf(settings.triggerRegionStartPercent, settings.triggerRegionEndPercent)
+                            .coerceIn(0, 100) / 100f
+                        val end = maxOf(settings.triggerRegionStartPercent, settings.triggerRegionEndPercent)
+                            .coerceIn(0, 100) / 100f
+                        val activeTop = top + phoneH * start
+                        val activeBottom = top + phoneH * end
 
-                val triggerY = (activeTop + activeBottom) / 2f
-                val triggerX = right - edgePx / 2f
-                val guideColor = Color(0xFF008DD2)
-                drawLine(
-                    color = guideColor,
-                    start = Offset(triggerX, triggerY),
-                    end = Offset(triggerX - distancePx, triggerY),
-                    strokeWidth = 2.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-                val radians = Math.toRadians(settings.swipeAngleDegrees.toDouble()).toFloat()
-                listOf(Math.PI.toFloat() - radians, Math.PI.toFloat() + radians).forEach { angle ->
-                    drawLine(
-                        color = guideColor.copy(alpha = 0.72f),
-                        start = Offset(triggerX, triggerY),
-                        end = Offset(
-                            triggerX + cos(angle) * distancePx * 0.72f,
-                            triggerY + sin(angle) * distancePx * 0.72f
-                        ),
-                        strokeWidth = 1.5.dp.toPx(),
-                        cap = StrokeCap.Round
-                    )
+                        drawRoundRect(
+                            color = phoneColor,
+                            topLeft = Offset(left, top),
+                            size = Size(phoneW, phoneH),
+                            cornerRadius = CornerRadius(18.dp.toPx(), 18.dp.toPx())
+                        )
+
+                        if (!lsposed) {
+                            drawRect(systemColor, Offset(left, top), Size(systemGapPx, phoneH))
+                            drawRect(systemColor, Offset(right - systemGapPx, top), Size(systemGapPx, phoneH))
+                        }
+
+                        drawRect(edgeColor.copy(alpha = 0.14f), Offset(left + systemGapPx, top), Size(edgePx, phoneH))
+                        drawRect(edgeColor.copy(alpha = 0.14f), Offset(right - systemGapPx - edgePx, top), Size(edgePx, phoneH))
+                        drawRect(
+                            color = edgeColor.copy(alpha = if (lsposed) 0.52f else 0.38f),
+                            topLeft = Offset(left + systemGapPx, activeTop),
+                            size = Size(edgePx, activeBottom - activeTop)
+                        )
+                        drawRect(
+                            color = edgeColor.copy(alpha = if (lsposed) 0.52f else 0.38f),
+                            topLeft = Offset(right - systemGapPx - edgePx, activeTop),
+                            size = Size(edgePx, activeBottom - activeTop)
+                        )
+
+                        val activeBorder = if (enhancedMode == lsposed) edgeColor.copy(alpha = 0.72f) else borderColor
+                        drawRoundRect(
+                            color = activeBorder,
+                            topLeft = Offset(left, top),
+                            size = Size(phoneW, phoneH),
+                            cornerRadius = CornerRadius(18.dp.toPx(), 18.dp.toPx()),
+                            style = Stroke(width = if (enhancedMode == lsposed) 2.dp.toPx() else 1.4.dp.toPx())
+                        )
+
+                        val activeSpan = (activeBottom - activeTop).coerceAtLeast(1f)
+                        val triggerY = activeTop + activeSpan * 0.72f
+                        val triggerX = right - systemGapPx - edgePx / 2f
+                        val guideColor = edgeColor
+                        val centerEnd = Offset(
+                            (triggerX - distancePx * 0.38f).coerceAtLeast(left + systemGapPx + edgePx),
+                            (triggerY - distancePx).coerceAtLeast(top + 12.dp.toPx())
+                        )
+                        drawArrow(
+                            start = Offset(triggerX, triggerY),
+                            end = centerEnd,
+                            arrowSize = 7.dp.toPx(),
+                            color = guideColor,
+                            stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                        val radians = Math.toRadians(settings.swipeAngleDegrees.toDouble()).toFloat()
+                        listOf((-Math.PI / 2).toFloat() - radians, (-Math.PI / 2).toFloat() + radians).forEach { angle ->
+                            drawLine(
+                                color = guideColor.copy(alpha = 0.66f),
+                                start = Offset(triggerX, triggerY),
+                                end = Offset(
+                                    triggerX + cos(angle) * distancePx * 0.78f,
+                                    triggerY + sin(angle) * distancePx * 0.78f
+                                ),
+                                strokeWidth = 1.3.dp.toPx(),
+                                cap = StrokeCap.Round
+                            )
+                        }
+                        drawCircle(guideColor, radius = 3.6.dp.toPx(), center = Offset(triggerX, triggerY))
+                    }
+
+                    drawEnginePreview(firstLeft, lsposed = false)
+                    drawEnginePreview(firstLeft + phoneW + gap, lsposed = true)
                 }
-                drawCircle(guideColor, radius = 4.dp.toPx(), center = Offset(triggerX, triggerY))
+
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Spacer(Modifier.weight(12f))
+                        PreviewModeLabel(
+                            color = edgeColor.copy(alpha = 0.38f),
+                            title = t("普通", "Standard"),
+                            subtitle = t("留侧滑", "Gap"),
+                            modifier = Modifier.weight(34f)
+                        )
+                        Spacer(Modifier.weight(8f))
+                        PreviewModeLabel(
+                            color = edgeColor.copy(alpha = 0.52f),
+                            title = "LSPosed",
+                            subtitle = t("贴边", "Edge"),
+                            modifier = Modifier.weight(34f)
+                        )
+                        Spacer(Modifier.weight(12f))
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "±${settings.swipeAngleDegrees}° / ${settings.swipeDistanceDp}dp",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun PreviewModeLabel(
+    color: Color,
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(color, RoundedCornerShape(3.dp))
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -1618,7 +2276,16 @@ private fun actionLabel(action: String): String {
         GestureConfig.ACTION_BACK -> t("返回", "Back")
         GestureConfig.ACTION_HOME -> t("主页", "Home")
         GestureConfig.ACTION_RECENTS -> t("最近任务", "Recents")
+        GestureConfig.ACTION_NOTIFICATIONS -> t("通知栏", "Notifications")
         else -> action
+    }
+}
+
+private fun notificationShadeModeLabel(mode: String): String {
+    return when (mode) {
+        GestureConfig.NOTIFICATION_SHADE_TOUCH -> t("碰到就下拉", "Pull on Touch")
+        GestureConfig.NOTIFICATION_SHADE_RELEASE -> t("松手点击下拉", "Pull on Release")
+        else -> mode
     }
 }
 

@@ -10,6 +10,8 @@ object RuntimeGestureConfig {
     @Volatile var triggerRegionStartPercent: Int = GestureConfig.DEFAULT_TRIGGER_REGION_START_PERCENT
     @Volatile var triggerRegionEndPercent: Int = GestureConfig.DEFAULT_TRIGGER_REGION_END_PERCENT
     @Volatile var swipeAngleDegrees: Int = GestureConfig.DEFAULT_SWIPE_ANGLE_DEGREES
+    @Volatile var doubleTapTimeoutMs: Int = GestureConfig.DEFAULT_DOUBLE_TAP_TIMEOUT_MS
+    @Volatile var notificationShadeMode: String = GestureConfig.DEFAULT_NOTIFICATION_SHADE_MODE
     @Volatile var pointerRadiusDp: Int = GestureConfig.DEFAULT_POINTER_RADIUS_DP
     @Volatile var pointerControlAlpha: Int = GestureConfig.DEFAULT_POINTER_CONTROL_ALPHA
     @Volatile var pointerSensitivity: Int = GestureConfig.DEFAULT_POINTER_SENSITIVITY
@@ -56,6 +58,10 @@ object RuntimeGestureConfig {
         triggerRegionStartPercent = intent.getIntExtra(GestureConfig.KEY_TRIGGER_REGION_START_PERCENT, triggerRegionStartPercent)
         triggerRegionEndPercent = intent.getIntExtra(GestureConfig.KEY_TRIGGER_REGION_END_PERCENT, triggerRegionEndPercent)
         swipeAngleDegrees = intent.getIntExtra(GestureConfig.KEY_SWIPE_ANGLE_DEGREES, swipeAngleDegrees)
+        doubleTapTimeoutMs = intent.getIntExtra(GestureConfig.KEY_DOUBLE_TAP_TIMEOUT_MS, doubleTapTimeoutMs)
+        notificationShadeMode = GestureConfig.sanitizeNotificationShadeMode(
+            intent.getStringExtra(GestureConfig.KEY_NOTIFICATION_SHADE_MODE) ?: notificationShadeMode
+        )
         pointerRadiusDp = intent.getIntExtra(GestureConfig.KEY_POINTER_RADIUS_DP, pointerRadiusDp)
         pointerControlAlpha = intent.getIntExtra(GestureConfig.KEY_POINTER_CONTROL_ALPHA, pointerControlAlpha)
         pointerSensitivity = intent.getIntExtra(GestureConfig.KEY_POINTER_SENSITIVITY, pointerSensitivity)
@@ -103,6 +109,10 @@ object RuntimeGestureConfig {
         triggerRegionStartPercent = prefs.getInt(GestureConfig.KEY_TRIGGER_REGION_START_PERCENT, triggerRegionStartPercent)
         triggerRegionEndPercent = prefs.getInt(GestureConfig.KEY_TRIGGER_REGION_END_PERCENT, triggerRegionEndPercent)
         swipeAngleDegrees = prefs.getInt(GestureConfig.KEY_SWIPE_ANGLE_DEGREES, swipeAngleDegrees)
+        doubleTapTimeoutMs = prefs.getInt(GestureConfig.KEY_DOUBLE_TAP_TIMEOUT_MS, doubleTapTimeoutMs)
+        notificationShadeMode = GestureConfig.sanitizeNotificationShadeMode(
+            prefs.getString(GestureConfig.KEY_NOTIFICATION_SHADE_MODE, notificationShadeMode)
+        )
         pointerRadiusDp = prefs.getInt(GestureConfig.KEY_POINTER_RADIUS_DP, pointerRadiusDp)
         pointerControlAlpha = prefs.getInt(GestureConfig.KEY_POINTER_CONTROL_ALPHA, pointerControlAlpha)
         pointerSensitivity = prefs.getInt(GestureConfig.KEY_POINTER_SENSITIVITY, pointerSensitivity)
