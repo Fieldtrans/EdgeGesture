@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.1 - 2026-05-31
+
+- Added boot/unlock/user-present config rebroadcasting so the LSPosed enhanced engine can recover its saved configuration after reboot.
+- Added an explicit config sync when opening the app, making the LSPosed mode recover reliably without toggling the master switch.
+- Refreshed the LSPosed runtime when the screen turns on or the user unlocks the device.
+- Added GitHub topics for Accessibility/no-root discoverability.
+
 ## 1.1.0 - 2026-05-31
 
 - Added Accessibility mode for no-root users, including one-hand line pointer and Tracker + Cursor.

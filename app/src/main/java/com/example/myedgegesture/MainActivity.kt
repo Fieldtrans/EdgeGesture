@@ -115,6 +115,7 @@ class MainActivity : ComponentActivity() {
 
         val initialState = loadState()
         latestState = initialState
+        sendBroadcast(buildConfigIntent(initialState))
 
         setContent {
             var settings by remember { mutableStateOf(initialState) }

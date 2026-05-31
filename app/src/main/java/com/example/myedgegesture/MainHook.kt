@@ -170,18 +170,9 @@ class MainHook : IXposedHookLoadPackage {
                         val context = XposedHelpers.getObjectField(param.thisObject, "mContext") as Context
                         systemContext = context
 
-                        loadSavedConfig(context)
                         DebugLog.markStatus(context, GestureConfig.KEY_STATUS_LOADED_AT, "system_server loaded")
                         registerConfigReceiver(context)
-
-                        if (RuntimeGestureConfig.enabled) {
-                            enableNativeInputFilter(param.thisObject)
-                            registerInputFilter(param.thisObject, classLoader)
-                            DebugLog.markStatus(context, GestureConfig.KEY_STATUS_STARTED_AT, runtimeSummary())
-                        } else {
-                            disableNativeInputFilter(param.thisObject)
-                            DebugLog.markStatus(context, GestureConfig.KEY_STATUS_LOADED_AT, "gestures disabled")
-                        }
+                        reloadSavedConfigAndApply(context, "system_server start")
                     }
                 }
             )
@@ -387,35 +378,33 @@ class MainHook : IXposedHookLoadPackage {
 
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(receiverContext: Context, intent: Intent) {
-                if (intent.action == Intent.ACTION_USER_UNLOCKED) {
-                    loadSavedConfig(receiverContext)
-                    applyRuntimeConfig(receiverContext)
-                    DebugLog.markStatus(receiverContext, GestureConfig.KEY_STATUS_STARTED_AT, runtimeSummary())
-                    return
+                when (intent.action) {
+                    Intent.ACTION_USER_UNLOCKED,
+                    Intent.ACTION_USER_PRESENT,
+                    Intent.ACTION_SCREEN_ON -> {
+                        reloadSavedConfigAndApply(receiverContext, intent.action ?: "user active")
+                    }
+
+                    Intent.ACTION_SCREEN_OFF,
+                    Intent.ACTION_USER_BACKGROUND -> {
+                        resetInputState()
+                        DebugLog.info("input state reset by ${intent.action}")
+                    }
+
+                    GestureConfig.ACTION_CONFIG_CHANGED -> {
+                        RuntimeGestureConfig.updateFromIntent(intent)
+                        applyRuntimeConfig(receiverContext)
+
+                        XposedBridge.log(
+                            "$TAG: config updated enabled=${RuntimeGestureConfig.enabled} " +
+                                "edge=${RuntimeGestureConfig.edgeWidthDp} " +
+                                "distance=${RuntimeGestureConfig.swipeDistanceDp} " +
+                                "leftUp=${RuntimeGestureConfig.actionFor(EdgeGestureDetector.Edge.LEFT, GESTURE_SWIPE_UP)} " +
+                                "rightUp=${RuntimeGestureConfig.actionFor(EdgeGestureDetector.Edge.RIGHT, GESTURE_SWIPE_UP)}"
+                        )
+                        markRuntimeStatus(receiverContext, "config updated")
+                    }
                 }
-
-                if (intent.action == Intent.ACTION_SCREEN_OFF ||
-                    intent.action == Intent.ACTION_USER_PRESENT ||
-                    intent.action == Intent.ACTION_USER_BACKGROUND
-                ) {
-                    resetInputState()
-                    DebugLog.info("input state reset by ${intent.action}")
-                    return
-                }
-
-                if (intent.action != GestureConfig.ACTION_CONFIG_CHANGED) return
-
-                RuntimeGestureConfig.updateFromIntent(intent)
-                applyRuntimeConfig(receiverContext)
-
-                XposedBridge.log(
-                    "$TAG: config updated enabled=${RuntimeGestureConfig.enabled} " +
-                        "edge=${RuntimeGestureConfig.edgeWidthDp} " +
-                        "distance=${RuntimeGestureConfig.swipeDistanceDp} " +
-                        "leftUp=${RuntimeGestureConfig.actionFor(EdgeGestureDetector.Edge.LEFT, GESTURE_SWIPE_UP)} " +
-                        "rightUp=${RuntimeGestureConfig.actionFor(EdgeGestureDetector.Edge.RIGHT, GESTURE_SWIPE_UP)}"
-                )
-                DebugLog.markStatus(receiverContext, GestureConfig.KEY_STATUS_STARTED_AT, runtimeSummary())
             }
         }
 
@@ -423,6 +412,7 @@ class MainHook : IXposedHookLoadPackage {
             val filter = IntentFilter().apply {
                 addAction(GestureConfig.ACTION_CONFIG_CHANGED)
                 addAction(Intent.ACTION_USER_UNLOCKED)
+                addAction(Intent.ACTION_SCREEN_ON)
                 addAction(Intent.ACTION_SCREEN_OFF)
                 addAction(Intent.ACTION_USER_PRESENT)
                 addAction(Intent.ACTION_USER_BACKGROUND)
@@ -508,6 +498,22 @@ class MainHook : IXposedHookLoadPackage {
         OneHandPointer.cancel()
         detector.reset()
         recycleHeldTouchEvents()
+    }
+
+    private fun reloadSavedConfigAndApply(context: Context, reason: String) {
+        resetInputState()
+        loadSavedConfig(context)
+        applyRuntimeConfig(context)
+        markRuntimeStatus(context, reason)
+        DebugLog.info("runtime refreshed by $reason enabled=${RuntimeGestureConfig.enabled}")
+    }
+
+    private fun markRuntimeStatus(context: Context, reason: String) {
+        if (RuntimeGestureConfig.enabled) {
+            DebugLog.markStatus(context, GestureConfig.KEY_STATUS_STARTED_AT, "$reason; ${runtimeSummary()}")
+        } else {
+            DebugLog.markStatus(context, GestureConfig.KEY_STATUS_LOADED_AT, "$reason; gestures disabled")
+        }
     }
 
     private fun runtimeSummary(): String {
