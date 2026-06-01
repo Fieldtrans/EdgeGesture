@@ -5,3 +5,4 @@
 
 - Fieldtrans: project maintenance, testing, and product design.
 - Codex: code collaboration, architecture cleanup, UI adjustments, and documentation.
+- Claude: code collaboration, implementation assistance, and project iteration.
