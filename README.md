@@ -92,7 +92,14 @@ app/build/outputs/apk/release/app-release.apk
 
 ## 当前状态
 
-当前版本：`1.2.0`。
+当前版本：`1.3.0`。
+
+**最新改进 (v1.3.0)**:
+- 指针映射加入加速曲线：慢速更精确，快速移动更利落。
+- 加入死区过滤，并让 `pointerCurve` 参数实际生效。
+- 删除控制圆设置，仅保留取消圆半径设置。
+- 修复指针预览，并将滑块底色调整为灰白低对比。
+- 默认控制圆半径从 120dp 调整为 72dp。
 
 **最新改进 (v1.2.0)**:
 - ✅ 支持 Android 8.0+ (之前仅支持 Android 16)
@@ -182,7 +189,7 @@ app/build/outputs/apk/release/app-release.apk
 
 ## Status
 
-Current version: `1.1.0`.
+Current version: `1.3.0`.
 
 This module hooks input handling inside `system_server`. Use it carefully and keep a working recovery path before testing custom builds.
 
