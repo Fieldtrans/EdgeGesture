@@ -283,6 +283,17 @@ private fun AppearancePage(
     settings: SettingsState,
     onSettingsChange: (SettingsState) -> Unit
 ) {
+    SettingsSection(t("取消圆", "Cancel Circle"), Icons.Rounded.Palette) {
+        SettingSlider(
+            title = t("取消圆透明度", "Cancel Circle Opacity"),
+            valueText = settings.pointerControlAlpha.toString(),
+            description = t("调到 0 就隐藏取消圆。", "Set to 0 to hide the cancel circle."),
+            value = settings.pointerControlAlpha,
+            range = 0..255,
+            onValueChange = { onSettingsChange(settings.copy(pointerControlAlpha = it)) }
+        )
+    }
+
     SettingsSection(t("外观", "Appearance"), Icons.Rounded.Palette) {
         SettingSlider(
             title = t("箭头大小", "Arrow Size"),
@@ -353,19 +364,22 @@ fun PointerPreview(settings: SettingsState) {
                 val cancelRadius = settings.pointerRadiusDp.dp.toPx()
                     .coerceAtMost(size.height * 0.32f)
                     .coerceAtMost(size.width * 0.22f)
+                val cancelAlpha = settings.pointerControlAlpha.coerceIn(0, 255) / 255f
 
                 // Draw cancel circle
-                drawCircle(
-                    color = color.copy(alpha = 0.25f),
-                    radius = cancelRadius,
-                    center = anchor,
-                    style = Stroke(width = 1.dp.toPx())
-                )
-                drawCircle(
-                    color = color.copy(alpha = 0.06f),
-                    radius = cancelRadius,
-                    center = anchor
-                )
+                if (cancelAlpha > 0f) {
+                    drawCircle(
+                        color = color.copy(alpha = cancelAlpha),
+                        radius = cancelRadius,
+                        center = anchor,
+                        style = Stroke(width = 1.dp.toPx())
+                    )
+                    drawCircle(
+                        color = color.copy(alpha = cancelAlpha * 0.24f),
+                        radius = cancelRadius,
+                        center = anchor
+                    )
+                }
 
                 if (settings.pointerControlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
                     val cursor = Offset(size.width * 0.32f, size.height * 0.30f)
