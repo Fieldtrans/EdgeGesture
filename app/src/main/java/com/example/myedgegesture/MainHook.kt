@@ -8,6 +8,7 @@ import android.os.Build
 import android.view.InputDevice
 import android.view.InputEvent
 import android.view.MotionEvent
+import com.example.myedgegesture.compat.VersionCompat
 import de.robv.android.xposed.IXposedHookLoadPackage
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XC_MethodReplacement
@@ -417,7 +418,7 @@ class MainHook : IXposedHookLoadPackage {
                 addAction(Intent.ACTION_USER_PRESENT)
                 addAction(Intent.ACTION_USER_BACKGROUND)
             }
-            if (Build.VERSION.SDK_INT >= 33) {
+            if (VersionCompat.supportsReceiverExported()) {
                 context.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
             } else {
                 context.registerReceiver(receiver, filter)
