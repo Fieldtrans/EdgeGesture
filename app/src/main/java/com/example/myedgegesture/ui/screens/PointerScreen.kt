@@ -160,14 +160,6 @@ private fun LinePointerPage(
             onValueChange = { onSettingsChange(settings.copy(pointerSensitivity = it)) }
         )
         SettingSlider(
-            title = t("控制圆半径", "Control Radius"),
-            valueText = "${settings.pointerRadiusDp}dp",
-            description = t("拇指活动范围，越大越稳定。", "Thumb movement range; larger values feel steadier."),
-            value = settings.pointerRadiusDp,
-            range = 48..320,
-            onValueChange = { onSettingsChange(settings.copy(pointerRadiusDp = it)) }
-        )
-        SettingSlider(
             title = t("最大速度", "Max Speed"),
             valueText = t("${settings.pointerMaxSpeed}%屏高/秒", "${settings.pointerMaxSpeed}% screen/s"),
             description = t("限制指针每秒最多移动多少屏幕高度。", "Limits how much screen height the pointer can move per second."),
@@ -187,9 +179,9 @@ private fun LinePointerPage(
 
     SettingsSection(t("直线高级", "Line Advanced"), Icons.Rounded.Settings) {
         SettingSlider(
-            title = t("控制圆 / 取消圆", "Control / Cancel Circle"),
+            title = t("取消圆半径", "Cancel Circle Radius"),
             valueText = "${settings.pointerRadiusDp}dp",
-            description = t("指针或光标在这个圆内松手会取消点击。", "Release is canceled when the pointer or cursor is inside this circle."),
+            description = t("指针在这个圆内松手会取消点击。", "Release inside this circle cancels the tap."),
             value = settings.pointerRadiusDp,
             range = 48..320,
             onValueChange = { onSettingsChange(settings.copy(pointerRadiusDp = it)) }
@@ -234,18 +226,15 @@ private fun TrackerPointerPage(
     settings: SettingsState,
     onSettingsChange: (SettingsState) -> Unit
 ) {
-    SettingsSection(t("控制圆 / 取消", "Control / Cancel"), Icons.Rounded.Settings) {
+    SettingsSection(t("摇杆光标", "Tracker Cursor"), Icons.Rounded.RadioButtonChecked) {
         SettingSlider(
-            title = t("控制圆半径", "Control Circle Radius"),
+            title = t("取消圆半径", "Cancel Circle Radius"),
             valueText = "${settings.pointerRadiusDp}dp",
-            description = t("光标圆球在这个圆内松手会取消点击。", "Release is canceled when the cursor ball is inside this circle."),
+            description = t("光标在这个圆内松手会取消点击。", "Release inside this circle cancels the tap."),
             value = settings.pointerRadiusDp,
             range = 48..320,
             onValueChange = { onSettingsChange(settings.copy(pointerRadiusDp = it)) }
         )
-    }
-
-    SettingsSection(t("摇杆光标", "Tracker Cursor"), Icons.Rounded.RadioButtonChecked) {
         SettingSlider(
             title = t("摇杆灵敏度", "Tracker Sensitivity"),
             valueText = "${settings.trackerSensitivity}%",
@@ -295,14 +284,6 @@ private fun AppearancePage(
     onSettingsChange: (SettingsState) -> Unit
 ) {
     SettingsSection(t("外观", "Appearance"), Icons.Rounded.Palette) {
-        SettingSlider(
-            title = t("控制圆透明度", "Control Circle Opacity"),
-            valueText = settings.pointerControlAlpha.toString(),
-            description = t("调到 0 就隐藏控制圆。", "Set to 0 to hide the control circle."),
-            value = settings.pointerControlAlpha,
-            range = 0..255,
-            onValueChange = { onSettingsChange(settings.copy(pointerControlAlpha = it)) }
-        )
         SettingSlider(
             title = t("箭头大小", "Arrow Size"),
             valueText = "${settings.pointerArrowDp}dp",
@@ -368,26 +349,33 @@ fun PointerPreview(settings: SettingsState) {
                     .padding(10.dp)
             ) {
                 val stroke = Stroke(width = settings.pointerLineDp.dp.toPx(), cap = StrokeCap.Round)
-                val alpha = settings.pointerControlAlpha.coerceIn(0, 255) / 255f
-                val anchor = Offset(size.width * 0.82f, size.height * 0.66f)
-                val controlRadius = settings.pointerRadiusDp.dp.toPx().coerceAtMost(size.height * 0.42f)
+                val anchor = Offset(size.width * 0.72f, size.height * 0.62f)
+                val cancelRadius = settings.pointerRadiusDp.dp.toPx()
+                    .coerceAtMost(size.height * 0.32f)
+                    .coerceAtMost(size.width * 0.22f)
 
-                if (alpha > 0f) {
-                    drawCircle(
-                        color = color.copy(alpha = alpha),
-                        radius = controlRadius,
-                        center = anchor,
-                        style = Stroke(width = 1.5.dp.toPx())
-                    )
-                }
+                // Draw cancel circle
+                drawCircle(
+                    color = color.copy(alpha = 0.25f),
+                    radius = cancelRadius,
+                    center = anchor,
+                    style = Stroke(width = 1.dp.toPx())
+                )
+                drawCircle(
+                    color = color.copy(alpha = 0.06f),
+                    radius = cancelRadius,
+                    center = anchor
+                )
 
                 if (settings.pointerControlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
-                    val cursor = Offset(size.width * 0.42f, size.height * 0.34f)
+                    val cursor = Offset(size.width * 0.32f, size.height * 0.30f)
+                    // Tracker ball at anchor
                     drawCircle(
                         color = color,
                         radius = (settings.trackerBallDp.dp.toPx() / 2f).coerceAtLeast(3.dp.toPx()),
                         center = anchor
                     )
+                    // Line from anchor to cursor
                     drawLine(
                         color = color.copy(alpha = 0.45f),
                         start = anchor,
@@ -395,6 +383,7 @@ fun PointerPreview(settings: SettingsState) {
                         strokeWidth = 1.dp.toPx(),
                         cap = StrokeCap.Round
                     )
+                    // Cursor circle (fill + stroke)
                     drawCircle(
                         color = color.copy(alpha = 0.20f),
                         radius = settings.trackerCursorDp.dp.toPx() / 2f,
@@ -407,8 +396,8 @@ fun PointerPreview(settings: SettingsState) {
                         style = Stroke(width = 2.dp.toPx())
                     )
                 } else {
-                    val start = Offset(size.width, anchor.y)
-                    val end = Offset(size.width * 0.34f, size.height * 0.28f)
+                    val start = Offset(size.width * 0.92f, anchor.y)
+                    val end = Offset(size.width * 0.28f, size.height * 0.24f)
                     drawArrow(start, end, settings.pointerArrowDp.dp.toPx(), color, stroke)
                 }
             }

@@ -309,10 +309,17 @@ object OneHandPointer {
         }
 
         val (dx, dy) = limitedDelta(rawDx, rawDy, current.maxFingerStep)
-        val sensitivity = effectiveSensitivity(current)
-        current.targetX = (current.targetX + dx * sensitivity)
+        val distance = sqrt(dx * dx + dy * dy)
+
+        // Dead zone: ignore micro-jitter below threshold
+        if (distance < DEAD_ZONE_PX) return
+
+        // Velocity-dependent acceleration (like macOS pointer acceleration)
+        val gain = acceleratedGain(current, distance)
+
+        current.targetX = (current.targetX + dx * gain)
             .coerceIn(current.margin, current.width - current.margin)
-        current.targetY = (current.targetY + dy * sensitivity)
+        current.targetY = (current.targetY + dy * gain)
             .coerceIn(current.margin, current.height - current.margin)
     }
 
@@ -323,18 +330,51 @@ object OneHandPointer {
         current.anchorY = fingerY.coerceIn(0f, current.height)
     }
 
-    private fun effectiveSensitivity(current: Session): Float {
-        val base = if (current.controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
-            RuntimeGestureConfig.trackerSensitivity / 100f
+    /**
+     * Compute velocity-dependent gain with acceleration curve.
+     *
+     * Slow finger movement → low gain (precise aiming)
+     * Fast finger movement → high gain (quick repositioning)
+     *
+     * Uses pointerCurve parameter to control acceleration intensity:
+     * - curve < 100: flatter curve, more linear feel
+     * - curve = 100: balanced acceleration
+     * - curve > 100: steeper curve, stronger acceleration at high speed
+     */
+    private fun acceleratedGain(current: Session, fingerDelta: Float): Float {
+        val baseSensitivity = if (current.controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
+            (RuntimeGestureConfig.trackerSensitivity / 100f).coerceAtLeast(0.1f)
         } else {
-            current.sensitivity
-        }.coerceAtLeast(0.1f)
-        val speedGain = (current.maxPointerSpeed / current.height).coerceIn(0.4f, 5f)
-        return if (current.controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
-            base * TRACKER_CURSOR_GAIN * speedGain
-        } else {
-            base * LINE_ARROW_GAIN * speedGain
+            current.sensitivity.coerceAtLeast(0.1f)
         }
+
+        val modeGain = if (current.controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
+            TRACKER_CURSOR_GAIN
+        } else {
+            LINE_ARROW_GAIN
+        }
+
+        val speedGain = (current.maxPointerSpeed / current.height).coerceIn(0.4f, 5f)
+
+        // Acceleration curve using pointerCurve (60-220, default 100)
+        val curveStrength = (RuntimeGestureConfig.pointerCurve.coerceIn(60, 220) / 100f)
+
+        // Normalize finger speed: how fast relative to a reference movement
+        val referenceSpeed = REFERENCE_SPEED_DP * (current.height / 2000f) // scale to screen
+        val normalizedSpeed = (fingerDelta / referenceSpeed).coerceIn(0f, 8f)
+
+        // Non-linear acceleration: pow(speed, curve) gives sub-linear or super-linear
+        // curve < 1.0 → slow movement amplified (more precise at low speed)
+        // curve > 1.0 → fast movement amplified (snappier at high speed)
+        val acceleration = if (normalizedSpeed <= ACCELERATION_THRESHOLD) {
+            // Below threshold: reduced gain for precision
+            PRECISION_FACTOR + (1f - PRECISION_FACTOR) * (normalizedSpeed / ACCELERATION_THRESHOLD)
+        } else {
+            // Above threshold: accelerated gain
+            1f + (normalizedSpeed - ACCELERATION_THRESHOLD) * curveStrength * ACCELERATION_SCALE
+        }
+
+        return baseSensitivity * modeGain * speedGain * acceleration
     }
 
     private fun limitedDelta(dx: Float, dy: Float, maxStep: Float): Pair<Float, Float> {
@@ -1545,6 +1585,13 @@ object OneHandPointer {
     private const val CONTROL_START_SKIP_MOVES = 1
     private const val LINE_ARROW_GAIN = 1.65f
     private const val TRACKER_CURSOR_GAIN = 2.2f
+
+    // Acceleration curve constants
+    private const val DEAD_ZONE_PX = 0.8f           // Ignore movement smaller than this (pixels)
+    private const val REFERENCE_SPEED_DP = 6f        // Reference finger delta for normalization
+    private const val ACCELERATION_THRESHOLD = 0.5f  // Below this: precision mode
+    private const val PRECISION_FACTOR = 0.55f       // Gain reduction at very slow movement
+    private const val ACCELERATION_SCALE = 0.45f     // How much extra gain per speed unit above threshold
     private const val TRACKER_CURSOR_START_X_FROM_RIGHT = 0.44f
     private const val TRACKER_CURSOR_START_X_FROM_LEFT = 0.56f
     private const val TRACKER_CURSOR_START_Y = 0.38f
