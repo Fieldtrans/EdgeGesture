@@ -5,14 +5,17 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowOutward
@@ -40,7 +43,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import com.example.myedgegesture.CrashReporter
 import com.example.myedgegesture.GestureConfig
 import com.example.myedgegesture.R
 import com.example.myedgegesture.data.model.SettingsState
@@ -61,6 +66,8 @@ fun OverviewPage(
 ) {
     val context = LocalContext.current
     var showSupportDialog by remember { mutableStateOf(false) }
+    var showCrashLogDialog by remember { mutableStateOf(false) }
+    var crashLog by remember { mutableStateOf<String?>(null) }
 
     StatusCard(settings, hookStatus, onSettingsChange)
 
@@ -169,6 +176,18 @@ fun OverviewPage(
             trailingIcon = Icons.Rounded.ArrowOutward
         )
         OverviewListItem(
+            icon = Icons.Rounded.Info,
+            title = t("查看崩溃日志", "View Crash Log"),
+            subtitle = t(
+                "查看上一次未捕获异常记录",
+                "View the latest saved crash report"
+            ),
+            onClick = {
+                crashLog = CrashReporter.getLastCrashLog(context)
+                showCrashLogDialog = true
+            }
+        )
+        OverviewListItem(
             icon = Icons.Rounded.Favorite,
             title = t("支持开发", "Support Development"),
             subtitle = t(
@@ -182,6 +201,17 @@ fun OverviewPage(
     if (showSupportDialog) {
         SupportDevelopmentDialog(
             onDismiss = { showSupportDialog = false }
+        )
+    }
+
+    if (showCrashLogDialog) {
+        CrashLogDialog(
+            crashLog = crashLog,
+            onClear = {
+                CrashReporter.clearCrashLog(context)
+                crashLog = null
+            },
+            onDismiss = { showCrashLogDialog = false }
         )
     }
 }
@@ -274,6 +304,58 @@ private fun SupportDevelopmentDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text(t("关闭", "Close"))
+            }
+        }
+    )
+}
+
+@Composable
+private fun CrashLogDialog(
+    crashLog: String?,
+    onClear: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val content = crashLog?.takeIf { it.isNotBlank() }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(t("崩溃日志", "Crash Log")) },
+        text = {
+            if (content == null) {
+                Text(
+                    text = t("暂无崩溃日志。", "No crash log saved yet."),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = content,
+                        modifier = Modifier
+                            .heightIn(max = 420.dp)
+                            .verticalScroll(rememberScrollState())
+                            .padding(12.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(t("关闭", "Close"))
+            }
+        },
+        dismissButton = {
+            if (content != null) {
+                TextButton(onClick = onClear) {
+                    Text(t("清除", "Clear"))
+                }
             }
         }
     )
