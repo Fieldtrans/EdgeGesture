@@ -77,7 +77,8 @@ object OneHandPointer {
         var timeoutRunnable: Runnable? = null,
         var notificationShadeRunnable: Runnable? = null,
         var notificationShadeTriggered: Boolean = false,
-        var notificationPreviewProgress: Float = 0f
+        var notificationPreviewProgress: Float = 0f,
+        var appearProgress: Float = 0f
     )
 
     fun isActive(): Boolean {
@@ -88,7 +89,7 @@ object OneHandPointer {
         session?.let { current ->
             cancelNotificationShadeHold(current)
             cancelTimeout(current)
-            current.overlay.dismiss()
+            dismissWithAnimation(current)
         }
         session = null
     }
@@ -212,6 +213,7 @@ object OneHandPointer {
             newSession.controlStyle,
             newSession.notificationPreviewProgress
         )
+        overlay.startAppearAnimation()
         scheduleTimeout(newSession)
         updateNotificationShadeHold(newSession)
         DebugLog.info("one hand pointer started")
@@ -510,7 +512,7 @@ object OneHandPointer {
         val tapTouchArea = current.touchArea
         val shouldClick = click && !shouldCancelClick(current)
 
-        current.overlay.dismiss()
+        dismissWithAnimation(current)
         session = null
 
         if (shouldClick) {
@@ -536,11 +538,15 @@ object OneHandPointer {
         }
     }
 
+    private fun dismissWithAnimation(current: Session) {
+        current.overlay.startDismissAnimation()
+    }
+
     private fun scheduleTimeout(current: Session) {
         val runnable = Runnable {
             if (session !== current) return@Runnable
             cancelNotificationShadeHold(current)
-            current.overlay.dismiss()
+            dismissWithAnimation(current)
             session = null
             DebugLog.info("pointer auto canceled by timeout")
         }
@@ -816,6 +822,8 @@ object OneHandPointer {
         private var pendingStyle = GestureConfig.POINTER_STYLE_LINE_ARROW
         private var pendingNotificationPreviewProgress = 0f
         private var pendingUpdatePosted = false
+        private var appearAnimator: ValueAnimator? = null
+        private var dismissAnimating = false
 
         private val screenBounds = run {
             val bounds = windowManager.currentWindowMetrics.bounds
@@ -948,6 +956,49 @@ object OneHandPointer {
             }
         }
 
+        fun startAppearAnimation() {
+            postToMain {
+                appearAnimator?.cancel()
+                dismissAnimating = false
+                view.appearProgress = 0f
+                appearAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+                    duration = 150
+                    interpolator = DecelerateInterpolator()
+                    addUpdateListener {
+                        view.appearProgress = it.animatedValue as Float
+                        view.postInvalidateOnAnimation()
+                    }
+                    start()
+                }
+            }
+        }
+
+        fun startDismissAnimation() {
+            postToMain {
+                if (!shown || dismissAnimating) {
+                    dismiss()
+                    return@postToMain
+                }
+                dismissAnimating = true
+                appearAnimator?.cancel()
+                ValueAnimator.ofFloat(view.appearProgress, 0f).apply {
+                    duration = 120
+                    interpolator = DecelerateInterpolator()
+                    addUpdateListener {
+                        view.appearProgress = it.animatedValue as Float
+                        view.postInvalidateOnAnimation()
+                    }
+                    addListener(object : AnimatorListenerAdapter() {
+                        override fun onAnimationEnd(animation: Animator) {
+                            dismiss()
+                            dismissAnimating = false
+                        }
+                    })
+                    start()
+                }
+            }
+        }
+
         fun dismiss() {
             postToMain {
                 if (!shown) return@postToMain
@@ -993,6 +1044,7 @@ object OneHandPointer {
             private var newDirtyRight = 0
             private var newDirtyBottom = 0
             private val clipBounds = Rect()
+            var appearProgress: Float = 1f
 
             private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.rgb(0, 220, 80)
@@ -1116,6 +1168,24 @@ object OneHandPointer {
                     canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
                 }
 
+                val progress = appearProgress.coerceIn(0f, 1f)
+                if (progress <= 0f) return
+
+                val scale = 0.7f + 0.3f * progress
+                val centerX = (anchorX + pointerX) / 2f
+                val centerY = (anchorY + pointerY) / 2f
+                canvas.save()
+                canvas.scale(scale, scale, centerX, centerY)
+
+                val savedLinePaintAlpha = linePaint.alpha
+                val savedControlPaintAlpha = controlPaint.alpha
+                val savedCursorPaintAlpha = cursorPaint.alpha
+                val savedCursorStrokePaintAlpha = cursorStrokePaint.alpha
+                linePaint.alpha = (savedLinePaintAlpha * progress).toInt()
+                controlPaint.alpha = (savedControlPaintAlpha * progress).toInt()
+                cursorPaint.alpha = (savedCursorPaintAlpha * progress).toInt()
+                cursorStrokePaint.alpha = (savedCursorStrokePaintAlpha * progress).toInt()
+
                 drawNotificationPreview(canvas)
 
                 if (style == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
@@ -1130,6 +1200,12 @@ object OneHandPointer {
                 } else {
                     drawArrowLine(canvas, visualStartX, visualStartY, pointerX, pointerY)
                 }
+
+                linePaint.alpha = savedLinePaintAlpha
+                controlPaint.alpha = savedControlPaintAlpha
+                cursorPaint.alpha = savedCursorPaintAlpha
+                cursorStrokePaint.alpha = savedCursorStrokePaintAlpha
+                canvas.restore()
             }
 
             private fun drawNotificationPreview(canvas: Canvas) {

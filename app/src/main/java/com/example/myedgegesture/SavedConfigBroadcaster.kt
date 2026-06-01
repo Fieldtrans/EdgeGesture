@@ -76,6 +76,7 @@ object SavedConfigBroadcaster {
             prefs.getInt(GestureConfig.KEY_POINTER_COLOR_RED, GestureConfig.DEFAULT_POINTER_COLOR_RED),
             prefs.getInt(GestureConfig.KEY_POINTER_COLOR_GREEN, GestureConfig.DEFAULT_POINTER_COLOR_GREEN),
             prefs.getInt(GestureConfig.KEY_POINTER_COLOR_BLUE, GestureConfig.DEFAULT_POINTER_COLOR_BLUE),
+            prefs.getBoolean(GestureConfig.KEY_HAPTIC_FEEDBACK_ENABLED, GestureConfig.DEFAULT_HAPTIC_FEEDBACK_ENABLED),
             actionByKey
         )
     }

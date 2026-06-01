@@ -8,6 +8,11 @@ import kotlin.math.abs
 class EdgeGestureDetector(
     private val callbacks: Callbacks
 ) {
+    // Cached screen metrics to avoid repeated WindowManager calls
+    private var cachedScreenWidth: Float = 0f
+    private var cachedScreenHeight: Float = 0f
+    private var cachedDensity: Float = 0f
+    private var lastConfigurationHash: Int = 0
     interface Callbacks {
         fun onGesture(
             context: Context,
@@ -89,7 +94,7 @@ class EdgeGestureDetector(
         }
 
         val bounds = screenBounds(context)
-        val density = context.resources.displayMetrics.density
+        val density = density(context)
         val edgeWidth = RuntimeGestureConfig.edgeWidthDp * density
         val edge = resolveEdge(bounds.first, bounds.second, edgeWidth, event.rawX, event.rawY)
         if (edge == null || !isInsideTriggerRegion(bounds.first, bounds.second, edge, event.rawX, event.rawY)) {
@@ -122,7 +127,7 @@ class EdgeGestureDetector(
         if (current.claimed) return Decision.CONSUME
         if (current.yielded) return Decision.FORWARD
 
-        val density = context.resources.displayMetrics.density
+        val density = density(context)
         val dx = event.rawX - current.downX
         val dy = event.rawY - current.downY
 
@@ -273,7 +278,7 @@ class EdgeGestureDetector(
         val dx = event.rawX - current.downX
         val dy = event.rawY - current.downY
         val duration = event.eventTime - current.createdAt
-        val tapSlop = TAP_SLOP_DP * context.resources.displayMetrics.density
+        val tapSlop = TAP_SLOP_DP * density(context)
         if (duration > TAP_MAX_HOLD_MS || abs(dx) > tapSlop || abs(dy) > tapSlop) {
             pendingDoubleTap = null
             return false
@@ -318,7 +323,7 @@ class EdgeGestureDetector(
         if (pending.edge != current.edge || pending.zone != current.zone) return false
         if (event.eventTime - pending.eventTime > doubleTapTimeoutMs()) return false
 
-        val slop = DOUBLE_TAP_SLOP_DP * context.resources.displayMetrics.density
+        val slop = DOUBLE_TAP_SLOP_DP * density(context)
         val dx = event.rawX - pending.x
         val dy = event.rawY - pending.y
         return dx * dx + dy * dy <= slop * slop
@@ -393,9 +398,22 @@ class EdgeGestureDetector(
     }
 
     private fun screenBounds(context: Context): Pair<Float, Float> {
+        val configHash = context.resources.configuration.hashCode()
+        if (cachedScreenWidth > 0f && cachedScreenHeight > 0f && configHash == lastConfigurationHash) {
+            return cachedScreenWidth to cachedScreenHeight
+        }
         val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
         val bounds = windowManager.currentWindowMetrics.bounds
-        return bounds.width().toFloat() to bounds.height().toFloat()
+        cachedScreenWidth = bounds.width().toFloat()
+        cachedScreenHeight = bounds.height().toFloat()
+        lastConfigurationHash = configHash
+        return cachedScreenWidth to cachedScreenHeight
+    }
+
+    private fun density(context: Context): Float {
+        if (cachedDensity > 0f) return cachedDensity
+        cachedDensity = context.resources.displayMetrics.density
+        return cachedDensity
     }
 
     private companion object {

@@ -4,17 +4,25 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowOutward
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PowerSettingsNew
-import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -28,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -55,13 +64,15 @@ fun OverviewPage(
 
     StatusCard(settings, hookStatus, onSettingsChange)
 
+    Spacer(Modifier.height(8.dp))
+
     SettingsSection(t("新手指南", "Quick Start"), Icons.Rounded.TouchApp) {
         Text(
             text = t(
                 "第一次使用建议先看 30 秒指南：选择普通模式或增强模式，理解上划指针、摇杆光标、取消圆和保存配置。",
                 "New users should start with a short guide covering Standard/Enhanced mode, swipe-up pointer, Tracker + Cursor, cancel circles, and saving settings."
             ),
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -73,6 +84,8 @@ fun OverviewPage(
         }
     }
 
+    Spacer(Modifier.height(8.dp))
+
     SettingsSection(
         title = t("普通模式（无障碍）", "Standard Mode (Accessibility)"),
         icon = Icons.Rounded.TouchApp
@@ -82,7 +95,7 @@ fun OverviewPage(
                 "免 Root 的基础模式，依赖系统无障碍服务。适合普通用户使用；如果 LSPosed 增强模式已启动，无障碍触摸层会自动暂停，避免冲突。",
                 "A no-root basic mode powered by Android Accessibility. It is suitable for normal users; if the LSPosed enhanced engine is active, the accessibility touch layer pauses automatically to avoid conflicts."
             ),
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -95,6 +108,8 @@ fun OverviewPage(
             Text(t("打开无障碍设置", "Open Accessibility Settings"))
         }
     }
+
+    Spacer(Modifier.height(8.dp))
 
     SettingsSection(
         title = t("当前模式", "Current Mode"),
@@ -119,62 +134,103 @@ fun OverviewPage(
         )
     }
 
+    Spacer(Modifier.height(8.dp))
+
     SettingsSection(t("说明", "Notes"), Icons.Rounded.Palette) {
         Text(
             text = t(
                 "启用 LSPosed 模块后建议重启。杀掉 App 不影响手势；App 只负责保存参数。需要排查时，在 LSPosed 日志里搜索 EdgeGesture。若调出时卡顿，优先降低控制圆透明度。",
                 "Reboot after enabling the LSPosed module. Killing the app does not stop gestures; the app only saves settings. Search EdgeGesture in LSPosed logs for troubleshooting. If the overlay stutters, lower the control circle opacity first."
             ),
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 
-    SettingsSection(t("关于", "About"), Icons.Rounded.Settings) {
-        Text(
-            text = t(
-                "EdgeGesture 是一个单手边缘手势工具，支持普通无障碍模式和 LSPosed 增强模式。",
-                "EdgeGesture is a one-handed edge gesture tool with Accessibility mode and LSPosed enhanced mode."
+    Spacer(Modifier.height(8.dp))
+
+    // About & Support as clean list items
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        OverviewListItem(
+            icon = Icons.Rounded.Info,
+            title = t("关于", "About"),
+            subtitle = t(
+                "EdgeGesture - 单手边缘手势工具",
+                "EdgeGesture - One-handed edge gesture tool"
             ),
-            modifier = Modifier.padding(16.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        OutlinedButton(
             onClick = {
                 context.startActivity(
                     Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Fieldtrans/EdgeGesture"))
                 )
             },
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Text(t("打开 GitHub 项目主页", "Open GitHub"))
-        }
-    }
-
-    SettingsSection(t("支持开发", "Support"), Icons.Rounded.Palette) {
-        Text(
-            text = t(
-                "如果 EdgeGesture 对你有帮助，可以自愿支持后续维护。打赏不会解锁额外功能。",
-                "If EdgeGesture helps you, you can voluntarily support ongoing development. Donations do not unlock extra features."
-            ),
-            modifier = Modifier.padding(16.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            trailingIcon = Icons.Rounded.ArrowOutward
         )
-        OutlinedButton(
-            onClick = { showSupportDialog = true },
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Text(t("打开打赏码", "Show QR Code"))
-        }
+        OverviewListItem(
+            icon = Icons.Rounded.Favorite,
+            title = t("支持开发", "Support Development"),
+            subtitle = t(
+                "自愿打赏，不解锁额外功能",
+                "Voluntary donation, no extra features unlocked"
+            ),
+            onClick = { showSupportDialog = true }
+        )
     }
 
     if (showSupportDialog) {
         SupportDevelopmentDialog(
             onDismiss = { showSupportDialog = false }
         )
+    }
+}
+
+/**
+ * Clean list item for about/support sections
+ */
+@Composable
+private fun OverviewListItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    trailingIcon: ImageVector? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        if (trailingIcon != null) {
+            Icon(
+                imageVector = trailingIcon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -200,7 +256,7 @@ private fun SupportDevelopmentDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(16.dp),
                     color = Color.White,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -210,7 +266,7 @@ private fun SupportDevelopmentDialog(
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp)
+                            .padding(16.dp)
                     )
                 }
             }

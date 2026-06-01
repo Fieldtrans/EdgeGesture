@@ -112,6 +112,7 @@ class ConfigRepository(private val context: Context) {
             pointerColorRed = prefs.getInt(GestureConfig.KEY_POINTER_COLOR_RED, GestureConfig.DEFAULT_POINTER_COLOR_RED),
             pointerColorGreen = prefs.getInt(GestureConfig.KEY_POINTER_COLOR_GREEN, GestureConfig.DEFAULT_POINTER_COLOR_GREEN),
             pointerColorBlue = prefs.getInt(GestureConfig.KEY_POINTER_COLOR_BLUE, GestureConfig.DEFAULT_POINTER_COLOR_BLUE),
+            hapticFeedbackEnabled = prefs.getBoolean(GestureConfig.KEY_HAPTIC_FEEDBACK_ENABLED, GestureConfig.DEFAULT_HAPTIC_FEEDBACK_ENABLED),
             actionByKey = actionByKey
         )
     }
@@ -168,6 +169,7 @@ class ConfigRepository(private val context: Context) {
             state.pointerColorRed,
             state.pointerColorGreen,
             state.pointerColorBlue,
+            state.hapticFeedbackEnabled,
             state.actionByKey
         )
         context.sendBroadcast(intent)
@@ -266,6 +268,7 @@ class ConfigRepository(private val context: Context) {
             .putInt(GestureConfig.KEY_POINTER_COLOR_RED, state.pointerColorRed)
             .putInt(GestureConfig.KEY_POINTER_COLOR_GREEN, state.pointerColorGreen)
             .putInt(GestureConfig.KEY_POINTER_COLOR_BLUE, state.pointerColorBlue)
+            .putBoolean(GestureConfig.KEY_HAPTIC_FEEDBACK_ENABLED, state.hapticFeedbackEnabled)
 
         state.actionByKey.forEach { (key, value) ->
             editor.putString(key, GestureConfig.sanitizeActionKey(key, value))

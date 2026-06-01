@@ -2,7 +2,11 @@ package com.example.myedgegesture
 
 import android.content.Context
 import android.hardware.input.InputManager
+import android.os.Build
 import android.os.SystemClock
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.view.InputDevice
 import android.view.InputEvent
 import android.view.KeyCharacterMap
@@ -42,7 +46,108 @@ object GestureActionDispatcher {
                 notificationOnly = true
             )
             GestureConfig.ACTION_ONE_HAND_TAP -> OneHandPointer.start(context, x, y, x, y)
+            GestureConfig.ACTION_SCREENSHOT -> performScreenshot(context)
+            GestureConfig.ACTION_SPLIT_SCREEN -> performSplitScreen(context)
+            GestureConfig.ACTION_POWER_MENU -> performPowerMenu(context)
             else -> DebugLog.info("no action mapped")
+        }
+
+        if (action != GestureConfig.ACTION_NONE && RuntimeGestureConfig.hapticFeedbackEnabled) {
+            performHapticFeedback(context)
+        }
+    }
+
+    private fun performHapticFeedback(context: Context) {
+        try {
+            val vibrator = if (Build.VERSION.SDK_INT >= 31) {
+                (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            }
+            vibrator.vibrate(VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE))
+        } catch (_: Throwable) {}
+    }
+
+    private fun performScreenshot(context: Context) {
+        // Inject KEYCODE_SYSRQ for screenshot
+        try {
+            injectSystemKey(context, KeyEvent.KEYCODE_SYSRQ, "screenshot")
+        } catch (_: Throwable) {
+            // Fallback: simulate POWER + VOLUME_DOWN combo
+            try {
+                val inputManager = context.getSystemService(Context.INPUT_SERVICE) as InputManager
+                val injectMethod = inputManager.javaClass.getMethod(
+                    "injectInputEvent",
+                    InputEvent::class.java,
+                    Int::class.javaPrimitiveType
+                )
+                val now = SystemClock.uptimeMillis()
+
+                val powerDown = KeyEvent(now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_POWER, 0, 0,
+                    KeyCharacterMap.VIRTUAL_KEYBOARD, 0, KeyEvent.FLAG_FROM_SYSTEM, InputDevice.SOURCE_KEYBOARD)
+                val volDown = KeyEvent(now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_VOLUME_DOWN, 0, 0,
+                    KeyCharacterMap.VIRTUAL_KEYBOARD, 0, KeyEvent.FLAG_FROM_SYSTEM, InputDevice.SOURCE_KEYBOARD)
+                val volUp = KeyEvent(now, now + 100, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_VOLUME_DOWN, 0, 0,
+                    KeyCharacterMap.VIRTUAL_KEYBOARD, 0, KeyEvent.FLAG_FROM_SYSTEM, InputDevice.SOURCE_KEYBOARD)
+                val powerUp = KeyEvent(now, now + 100, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_POWER, 0, 0,
+                    KeyCharacterMap.VIRTUAL_KEYBOARD, 0, KeyEvent.FLAG_FROM_SYSTEM, InputDevice.SOURCE_KEYBOARD)
+
+                InputInjectionGuard.runIgnoring {
+                    injectMethod.invoke(inputManager, powerDown, 0)
+                    injectMethod.invoke(inputManager, volDown, 0)
+                    injectMethod.invoke(inputManager, volUp, 0)
+                    injectMethod.invoke(inputManager, powerUp, 0)
+                }
+                XposedBridge.log("EdgeGesture: action -> screenshot (power+vol fallback)")
+            } catch (t: Throwable) {
+                XposedBridge.log("EdgeGesture: screenshot fallback failed: ${t.message}")
+            }
+        }
+    }
+
+    private fun performSplitScreen(context: Context) {
+        if (callStatusBarMethod("toggleSplitScreen", "splitScreen")) {
+            XposedBridge.log("EdgeGesture: action -> split_screen")
+            return
+        }
+        // Fallback: try toggleSplitScreenMode
+        if (callStatusBarMethod("toggleSplitScreenMode", "splitScreen")) {
+            XposedBridge.log("EdgeGesture: action -> split_screen (fallback)")
+            return
+        }
+        XposedBridge.log("EdgeGesture: split_screen not available via StatusBar")
+    }
+
+    private fun performPowerMenu(context: Context) {
+        // Long press power key to show power menu
+        try {
+            val inputManager = context.getSystemService(Context.INPUT_SERVICE) as InputManager
+            val injectMethod = inputManager.javaClass.getMethod(
+                "injectInputEvent",
+                InputEvent::class.java,
+                Int::class.javaPrimitiveType
+            )
+            val now = SystemClock.uptimeMillis()
+            val downEvent = KeyEvent(now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_POWER, 0, 0,
+                KeyCharacterMap.VIRTUAL_KEYBOARD, 0,
+                KeyEvent.FLAG_FROM_SYSTEM or KeyEvent.FLAG_LONG_PRESS,
+                InputDevice.SOURCE_KEYBOARD)
+            val upEvent = KeyEvent(now, now + 500, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_POWER, 0, 0,
+                KeyCharacterMap.VIRTUAL_KEYBOARD, 0, KeyEvent.FLAG_FROM_SYSTEM, InputDevice.SOURCE_KEYBOARD)
+
+            InputInjectionGuard.runIgnoring {
+                injectMethod.invoke(inputManager, downEvent, 0)
+            }
+            // Delay before key up to simulate long press
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                InputInjectionGuard.runIgnoring {
+                    injectMethod.invoke(inputManager, upEvent, 0)
+                }
+            }, 500)
+            XposedBridge.log("EdgeGesture: action -> power_menu")
+        } catch (t: Throwable) {
+            XposedBridge.log("EdgeGesture: power_menu failed: ${t.message}")
         }
     }
 

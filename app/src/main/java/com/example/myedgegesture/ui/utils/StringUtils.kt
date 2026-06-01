@@ -52,6 +52,9 @@ fun actionLabel(action: String): String {
         GestureConfig.ACTION_HOME -> t("主页", "Home")
         GestureConfig.ACTION_RECENTS -> t("最近任务", "Recents")
         GestureConfig.ACTION_NOTIFICATIONS -> t("通知栏", "Notifications")
+        GestureConfig.ACTION_SCREENSHOT -> t("截屏", "Screenshot")
+        GestureConfig.ACTION_SPLIT_SCREEN -> t("分屏", "Split Screen")
+        GestureConfig.ACTION_POWER_MENU -> t("电源菜单", "Power Menu")
         else -> action
     }
 }

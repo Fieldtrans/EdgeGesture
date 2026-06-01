@@ -35,6 +35,7 @@ object RuntimeGestureConfig {
     @Volatile var pointerColorRed: Int = GestureConfig.DEFAULT_POINTER_COLOR_RED
     @Volatile var pointerColorGreen: Int = GestureConfig.DEFAULT_POINTER_COLOR_GREEN
     @Volatile var pointerColorBlue: Int = GestureConfig.DEFAULT_POINTER_COLOR_BLUE
+    @Volatile var hapticFeedbackEnabled: Boolean = GestureConfig.DEFAULT_HAPTIC_FEEDBACK_ENABLED
     private val actionByKey = mutableMapOf<String, String>().apply {
         GestureConfig.edges.forEach { edge ->
             GestureConfig.gestures.forEach { gesture ->
@@ -89,6 +90,7 @@ object RuntimeGestureConfig {
         pointerColorRed = intent.getIntExtra(GestureConfig.KEY_POINTER_COLOR_RED, pointerColorRed)
         pointerColorGreen = intent.getIntExtra(GestureConfig.KEY_POINTER_COLOR_GREEN, pointerColorGreen)
         pointerColorBlue = intent.getIntExtra(GestureConfig.KEY_POINTER_COLOR_BLUE, pointerColorBlue)
+        hapticFeedbackEnabled = intent.getBooleanExtra(GestureConfig.KEY_HAPTIC_FEEDBACK_ENABLED, hapticFeedbackEnabled)
 
         GestureConfig.edges.forEach { edge ->
             GestureConfig.gestures.forEach { gesture ->
@@ -140,6 +142,7 @@ object RuntimeGestureConfig {
         pointerColorRed = prefs.getInt(GestureConfig.KEY_POINTER_COLOR_RED, pointerColorRed)
         pointerColorGreen = prefs.getInt(GestureConfig.KEY_POINTER_COLOR_GREEN, pointerColorGreen)
         pointerColorBlue = prefs.getInt(GestureConfig.KEY_POINTER_COLOR_BLUE, pointerColorBlue)
+        hapticFeedbackEnabled = prefs.getBoolean(GestureConfig.KEY_HAPTIC_FEEDBACK_ENABLED, hapticFeedbackEnabled)
 
         GestureConfig.edges.forEach { edge ->
             GestureConfig.gestures.forEach { gesture ->

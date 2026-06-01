@@ -1,7 +1,11 @@
 package com.example.myedgegesture.ui.screens
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,22 +13,25 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Error
 import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.myedgegesture.GestureConfig
 import com.example.myedgegesture.data.model.SettingsState
@@ -33,7 +40,7 @@ import com.example.myedgegesture.ui.utils.t
 import com.example.myedgegesture.ui.viewmodel.HookStatus
 
 /**
- * Status card showing module load state and enable switch
+ * Status card showing module load state and enable switch - with gradient banner
  */
 @Composable
 fun StatusCard(
@@ -42,54 +49,103 @@ fun StatusCard(
     onSettingsChange: (SettingsState) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
-        modifier = modifier.fillMaxWidth()
+    val containerColor by animateColorAsState(
+        targetValue = if (hookStatus.active)
+            MaterialTheme.colorScheme.primaryContainer
+        else
+            MaterialTheme.colorScheme.errorContainer,
+        animationSpec = tween(300),
+        label = "statusCardColor"
+    )
+    val gradientStart by animateColorAsState(
+        targetValue = if (hookStatus.active)
+            Color(0xFF00C853).copy(alpha = 0.15f)
+        else
+            Color(0xFFFF5252).copy(alpha = 0.15f),
+        animationSpec = tween(300),
+        label = "gradientStart"
+    )
+
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize(animationSpec = spring(dampingRatio = 0.8f))
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .background(
-                            if (hookStatus.active) Color(0xFF10A85A) else Color(0xFFE05A47),
-                            CircleShape
-                        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(gradientStart, Color.Transparent)
+                    )
                 )
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        text = t("模块状态", "Module Status"),
-                        style = MaterialTheme.typography.labelLarge
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Status banner with large icon
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = if (hookStatus.active)
+                            Icons.Rounded.CheckCircle
+                        else
+                            Icons.Rounded.Error,
+                        contentDescription = null,
+                        modifier = Modifier.size(36.dp),
+                        tint = if (hookStatus.active)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.error
                     )
-                    Text(
-                        text = hookStatus.text,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = if (hookStatus.active)
+                                t("模块已激活", "Module Active")
+                            else
+                                t("模块未激活", "Module Inactive"),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (hookStatus.active)
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            else
+                                MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            text = hookStatus.text,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (hookStatus.active)
+                                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            else
+                                MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
+                        )
+                    }
                 }
+                // Switches
+                SettingSwitch(
+                    title = t("启用模块手势", "Enable Module Gestures"),
+                    description = t("关闭后不处理边缘上划。", "When disabled, edge swipe-up will not be handled."),
+                    checked = settings.enabled,
+                    onCheckedChange = { onSettingsChange(settings.copy(enabled = it)) }
+                )
+                SettingSwitch(
+                    title = t("触觉反馈", "Haptic Feedback"),
+                    description = t("执行动作时触发短震动。", "Short vibration when an action is triggered."),
+                    checked = settings.hapticFeedbackEnabled,
+                    onCheckedChange = { onSettingsChange(settings.copy(hapticFeedbackEnabled = it)) }
+                )
             }
-            SettingSwitch(
-                title = t("启用模块手势", "Enable Module Gestures"),
-                description = t("关闭后不处理边缘上划。", "When disabled, edge swipe-up will not be handled."),
-                checked = settings.enabled,
-                onCheckedChange = { onSettingsChange(settings.copy(enabled = it)) }
-            )
         }
     }
 }
 
 /**
- * Mode selector: Line Arrow or Tracker Cursor
+ * Mode selector: Pill-shaped segmented button style
  */
 @Composable
 fun ModeSelector(
@@ -97,44 +153,93 @@ fun ModeSelector(
     onSettingsChange: (SettingsState) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isLineArrow = settings.pointerControlStyle == GestureConfig.POINTER_STYLE_LINE_ARROW
+    val selectedColor = MaterialTheme.colorScheme.primaryContainer
+    val unselectedColor = MaterialTheme.colorScheme.surfaceContainerHigh
+
     Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(0.dp),
         modifier = modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(unselectedColor)
     ) {
-        FilterChip(
-            selected = settings.pointerControlStyle == GestureConfig.POINTER_STYLE_LINE_ARROW,
-            onClick = {
-                onSettingsChange(
-                    settings.copy(pointerControlStyle = GestureConfig.POINTER_STYLE_LINE_ARROW)
-                )
-            },
-            label = { Text(t("直线箭头", "Line Arrow")) },
-            leadingIcon = {
+        // Line Arrow option
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(24.dp))
+                .background(if (isLineArrow) selectedColor else Color.Transparent)
+                .clickable {
+                    onSettingsChange(
+                        settings.copy(pointerControlStyle = GestureConfig.POINTER_STYLE_LINE_ARROW)
+                    )
+                }
+                .padding(vertical = 12.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(
                     Icons.Rounded.Tune,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(18.dp),
+                    tint = if (isLineArrow)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = t("直线箭头", "Line Arrow"),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (isLineArrow) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (isLineArrow)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        )
-        FilterChip(
-            selected = settings.pointerControlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR,
-            onClick = {
-                onSettingsChange(
-                    settings.copy(pointerControlStyle = GestureConfig.POINTER_STYLE_TRACKER_CURSOR)
-                )
-            },
-            label = { Text(t("摇杆光标", "Tracker Cursor")) },
-            leadingIcon = {
+        }
+        // Tracker Cursor option
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(24.dp))
+                .background(if (!isLineArrow) selectedColor else Color.Transparent)
+                .clickable {
+                    onSettingsChange(
+                        settings.copy(pointerControlStyle = GestureConfig.POINTER_STYLE_TRACKER_CURSOR)
+                    )
+                }
+                .padding(vertical = 12.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(
                     Icons.Rounded.RadioButtonChecked,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(18.dp),
+                    tint = if (!isLineArrow)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = t("摇杆光标", "Tracker Cursor"),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (!isLineArrow) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (!isLineArrow)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        )
+        }
     }
 }

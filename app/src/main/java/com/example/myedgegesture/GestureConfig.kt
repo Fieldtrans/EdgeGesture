@@ -38,6 +38,7 @@ object GestureConfig {
     const val KEY_POINTER_COLOR_GREEN = "pointer_color_green"
     const val KEY_POINTER_COLOR_BLUE = "pointer_color_blue"
     const val KEY_CONFIG_UPDATED_AT = "config_updated_at"
+    const val KEY_HAPTIC_FEEDBACK_ENABLED = "haptic_feedback_enabled"
     const val STATUS_PREFS_NAME = "hook_status"
     const val KEY_STATUS_LOADED_AT = "loaded_at"
     const val KEY_STATUS_STARTED_AT = "started_at"
@@ -49,6 +50,10 @@ object GestureConfig {
     const val ACTION_RECENTS = "recents"
     const val ACTION_NOTIFICATIONS = "notifications"
     const val ACTION_ONE_HAND_TAP = "one_hand_tap"
+    const val ACTION_LAUNCH_APP = "launch_app"
+    const val ACTION_SCREENSHOT = "screenshot"
+    const val ACTION_SPLIT_SCREEN = "split_screen"
+    const val ACTION_POWER_MENU = "power_menu"
 
     const val POINTER_MAPPING_PRECISION = "precision"
     const val POINTER_STYLE_LINE_ARROW = "line_arrow"
@@ -87,6 +92,7 @@ object GestureConfig {
     const val DEFAULT_POINTER_COLOR_RED = 0
     const val DEFAULT_POINTER_COLOR_GREEN = 220
     const val DEFAULT_POINTER_COLOR_BLUE = 80
+    const val DEFAULT_HAPTIC_FEEDBACK_ENABLED = true
 
     const val ACCESSIBILITY_MIN_EDGE_WIDTH_DP = 8
     const val ACCESSIBILITY_MAX_EDGE_WIDTH_DP = 32
@@ -127,8 +133,11 @@ object GestureConfig {
         ACTION_HOME,
         ACTION_RECENTS,
         ACTION_NOTIFICATIONS,
+        ACTION_SCREENSHOT,
+        ACTION_SPLIT_SCREEN,
+        ACTION_POWER_MENU,
     )
-    val actionLabels = listOf("无动作", "单手点击屏幕", "返回", "主页", "最近任务", "通知栏")
+    val actionLabels = listOf("无动作", "单手点击屏幕", "返回", "主页", "最近任务", "通知栏", "截屏", "分屏", "电源菜单")
 
     fun actionValuesForGesture(gesture: String): List<String> {
         return when (gesture) {
@@ -196,6 +205,7 @@ object GestureConfig {
         pointerColorRed: Int,
         pointerColorGreen: Int,
         pointerColorBlue: Int,
+        hapticFeedbackEnabled: Boolean = DEFAULT_HAPTIC_FEEDBACK_ENABLED,
         actionByKey: Map<String, String>,
     ): Intent {
         intent.putExtra(KEY_ENABLED, enabled)
@@ -229,6 +239,7 @@ object GestureConfig {
         intent.putExtra(KEY_POINTER_COLOR_RED, pointerColorRed)
         intent.putExtra(KEY_POINTER_COLOR_GREEN, pointerColorGreen)
         intent.putExtra(KEY_POINTER_COLOR_BLUE, pointerColorBlue)
+        intent.putExtra(KEY_HAPTIC_FEEDBACK_ENABLED, hapticFeedbackEnabled)
         actionByKey.forEach { (key, value) ->
             intent.putExtra(key, sanitizeActionKey(key, value))
         }
