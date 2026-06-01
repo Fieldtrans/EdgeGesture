@@ -100,7 +100,7 @@ class MainActivity : ComponentActivity() {
         // 配置版本迁移：检查是否需要更新默认值
         val configVersion = prefs.getInt("config_schema_version", 0)
         if (configVersion < 2) {
-            // v2: 控制圆半径从120改为72，加速曲线从100改为130
+            // v2: 控制圆半径从120改为72，并记录旧版控制曲线默认值
             prefs.edit()
                 .putInt("config_schema_version", 2)
                 .apply()

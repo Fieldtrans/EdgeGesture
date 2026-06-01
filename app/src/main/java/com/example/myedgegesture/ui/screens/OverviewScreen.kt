@@ -134,7 +134,7 @@ fun OverviewPage(
         SettingSlider(
             title = t("直线箭头灵敏度", "Line Arrow Sensitivity"),
             valueText = "${settings.pointerSensitivity}%",
-            description = t("基础移动倍率，配合加速曲线使用。", "Base movement multiplier, works with acceleration curve."),
+            description = t("线性移动倍率，不随快速滑动额外放大。", "Linear movement multiplier without fast-swipe acceleration."),
             value = settings.pointerSensitivity,
             range = 40..180,
             onValueChange = { onSettingsChange(settings.copy(pointerSensitivity = it)) }
