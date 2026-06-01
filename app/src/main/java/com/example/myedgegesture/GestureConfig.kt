@@ -129,19 +129,13 @@ object GestureConfig {
     val actionValues = listOf(
         ACTION_NONE,
         ACTION_ONE_HAND_TAP,
-        ACTION_BACK,
-        ACTION_HOME,
         ACTION_RECENTS,
-        ACTION_NOTIFICATIONS,
-        ACTION_SCREENSHOT,
-        ACTION_SPLIT_SCREEN,
-        ACTION_POWER_MENU,
     )
-    val actionLabels = listOf("无动作", "单手点击屏幕", "返回", "主页", "最近任务", "通知栏", "截屏", "分屏", "电源菜单")
+    val actionLabels = listOf("无动作", "单手点击屏幕", "最近任务")
 
     fun actionValuesForGesture(gesture: String): List<String> {
         return when (gesture) {
-            "swipe_up" -> actionValues
+            "swipe_up" -> listOf(ACTION_NONE, ACTION_ONE_HAND_TAP)
             "double_click" -> listOf(ACTION_NONE, ACTION_RECENTS)
             else -> listOf(ACTION_NONE)
         }
@@ -152,10 +146,10 @@ object GestureConfig {
     }
 
     fun defaultAction(edge: String, gesture: String): String {
-        return if (edge == "right" && gesture == "swipe_up") {
-            ACTION_ONE_HAND_TAP
-        } else {
-            ACTION_NONE
+        return when (gesture) {
+            "swipe_up" -> ACTION_ONE_HAND_TAP
+            "double_click" -> ACTION_RECENTS
+            else -> ACTION_NONE
         }
     }
 

@@ -154,7 +154,7 @@ private fun LinePointerPage(
         SettingSlider(
             title = t("速度 / 灵敏度", "Speed / Sensitivity"),
             valueText = "${settings.pointerSensitivity}%",
-            description = t("直线箭头跟手程度。", "How closely the line arrow follows your finger."),
+            description = t("基础移动倍率，慢速时精确、快速时会加速放大。", "Base multiplier; slow moves are precise, fast moves are amplified."),
             value = settings.pointerSensitivity,
             range = 40..180,
             onValueChange = { onSettingsChange(settings.copy(pointerSensitivity = it)) }
@@ -205,7 +205,7 @@ private fun LinePointerPage(
         SettingSlider(
             title = t("控制曲线", "Control Curve"),
             valueText = "${settings.pointerCurve}%",
-            description = t("保留给映射函数微调。", "Fine tuning for the pointer mapping curve."),
+            description = t("控制加速强度，越高快速移动时指针跳得越远。", "Controls acceleration intensity; higher values make the pointer jump further on fast movement."),
             value = settings.pointerCurve,
             range = 60..220,
             onValueChange = { onSettingsChange(settings.copy(pointerCurve = it)) }

@@ -2,7 +2,12 @@ package com.example.myedgegesture
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.content.Context
 import android.graphics.Path
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 
 object AccessibilityActionDispatcher {
 
@@ -68,34 +73,34 @@ object AccessibilityActionDispatcher {
         }
 
         when (action) {
-            GestureConfig.ACTION_BACK -> runGlobalAction(
-                service,
-                AccessibilityService.GLOBAL_ACTION_BACK,
-                "back"
-            )
-
-            GestureConfig.ACTION_HOME -> runGlobalAction(
-                service,
-                AccessibilityService.GLOBAL_ACTION_HOME,
-                "home"
-            )
-
             GestureConfig.ACTION_RECENTS -> runGlobalAction(
                 service,
                 AccessibilityService.GLOBAL_ACTION_RECENTS,
                 "recents"
             )
 
-            GestureConfig.ACTION_NOTIFICATIONS -> DebugLog.info(
-                "accessibility notifications action requires pointer click on status bar"
-            )
-
             GestureConfig.ACTION_ONE_HAND_TAP -> DebugLog.info(
-                "accessibility one-hand tap is not implemented in this MVP"
+                "accessibility one-hand tap deferred to pointer layer"
             )
 
             else -> DebugLog.info("accessibility no action mapped")
         }
+
+        if (action != GestureConfig.ACTION_NONE && RuntimeGestureConfig.hapticFeedbackEnabled) {
+            performHapticFeedback(service)
+        }
+    }
+
+    private fun performHapticFeedback(context: Context) {
+        try {
+            val vibrator = if (Build.VERSION.SDK_INT >= 31) {
+                (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            }
+            vibrator.vibrate(VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE))
+        } catch (_: Throwable) {}
     }
 
     fun expandNotifications(service: AccessibilityService) {

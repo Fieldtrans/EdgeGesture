@@ -48,13 +48,7 @@ fun actionLabel(action: String): String {
     return when (action) {
         GestureConfig.ACTION_NONE -> t("无动作", "No Action")
         GestureConfig.ACTION_ONE_HAND_TAP -> t("单手点击屏幕", "One-Hand Tap")
-        GestureConfig.ACTION_BACK -> t("返回", "Back")
-        GestureConfig.ACTION_HOME -> t("主页", "Home")
         GestureConfig.ACTION_RECENTS -> t("最近任务", "Recents")
-        GestureConfig.ACTION_NOTIFICATIONS -> t("通知栏", "Notifications")
-        GestureConfig.ACTION_SCREENSHOT -> t("截屏", "Screenshot")
-        GestureConfig.ACTION_SPLIT_SCREEN -> t("分屏", "Split Screen")
-        GestureConfig.ACTION_POWER_MENU -> t("电源菜单", "Power Menu")
         else -> action
     }
 }

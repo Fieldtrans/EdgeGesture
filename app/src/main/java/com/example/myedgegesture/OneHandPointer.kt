@@ -34,7 +34,7 @@ object OneHandPointer {
     private var session: Session? = null
 
     private data class Session(
-        val context: Context,
+        val contextRef: java.lang.ref.WeakReference<Context>,
         val overlay: PointerOverlay,
         val width: Float,
         val height: Float,
@@ -159,7 +159,7 @@ object OneHandPointer {
         }
 
         val newSession = Session(
-            context = context.applicationContext ?: context,
+            contextRef = java.lang.ref.WeakReference(context.applicationContext ?: context),
             overlay = overlay,
             width = bounds.first,
             height = bounds.second,
@@ -617,7 +617,8 @@ object OneHandPointer {
         cancelNotificationShadeHold(current)
         postToMain {
             if (session !== current) return@postToMain
-            val expanded = expandNotificationShade(current.context)
+            val ctx = current.contextRef.get() ?: return@postToMain
+            val expanded = expandNotificationShade(ctx)
             DebugLog.info("notification shade touched by pointer expanded=$expanded")
         }
     }

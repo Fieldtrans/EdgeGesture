@@ -22,11 +22,17 @@ import com.example.myedgegesture.ui.viewmodel.HookStatus
 
 private const val KEY_NEW_USER_GUIDE_SHOWN = "new_user_guide_shown"
 
+/**
+ * TODO: 后续迁移到 SettingsViewModel + ConfigRepository 架构。
+ * 当前 MainActivity 直接管理状态和 SharedPreferences，
+ * ViewModel/Repository 已创建但尚未集成，避免改动影响 hook 端配置同步。
+ */
 class MainActivity : ComponentActivity() {
     private var latestState: SettingsState? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CrashReporter.install(this)
         enableEdgeToEdge()
         requestHighRefreshRate()
 
@@ -90,6 +96,17 @@ class MainActivity : ComponentActivity() {
 
     private fun loadState(): SettingsState {
         val prefs = getSharedPreferences(GestureConfig.PREFS_NAME, MODE_PRIVATE)
+
+        // 配置版本迁移：检查是否需要更新默认值
+        val configVersion = prefs.getInt("config_schema_version", 0)
+        if (configVersion < 2) {
+            // v2: 控制圆半径从120改为72，加速曲线从100改为130
+            prefs.edit()
+                .putInt("config_schema_version", 2)
+                .apply()
+            // 不强制覆盖用户值，只更新 schema 版本标记
+        }
+
         val actionByKey = buildMap {
             GestureConfig.edges.forEach { edge ->
                 GestureConfig.gestures.forEach { gesture ->

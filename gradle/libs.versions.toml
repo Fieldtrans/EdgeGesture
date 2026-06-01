@@ -19,6 +19,7 @@ ktlint = "12.1.0"
 mockk = "1.13.10"
 turbine = "1.1.0"
 coroutinesTest = "1.8.0"
+orgJson = "20240303"
 
 # Architecture components
 lifecycle = "2.7.0"
@@ -48,6 +49,7 @@ mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 mockk-android = { group = "io.mockk", name = "mockk-android", version.ref = "mockk" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
+org-json = { group = "org.json", name = "json", version.ref = "orgJson" }
 
 # Architecture components
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
