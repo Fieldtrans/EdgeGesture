@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountTree
 import androidx.compose.material.icons.rounded.Download
@@ -98,6 +99,9 @@ fun SettingsScreen(
                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
                 ),
                 actions = {
+                    IconButton(onClick = onShowGuide) {
+                        Icon(Icons.AutoMirrored.Rounded.HelpOutline, contentDescription = t("打开新手指南", "Open guide"))
+                    }
                     IconButton(onClick = { importLauncher.launch(arrayOf("application/json", "text/*", "*/*")) }) {
                         Icon(Icons.Rounded.Upload, contentDescription = t("导入配置", "Import config"))
                     }
@@ -194,7 +198,7 @@ fun SettingsScreen(
                             ) {
                                 item {
                                     when (pageIndex) {
-                                        0 -> OverviewPage(settings, onSettingsChange, hookStatus, onShowGuide)
+                                        0 -> OverviewPage(settings, onSettingsChange, hookStatus)
                                         3 -> ActionPage(settings, onSettingsChange)
                                     }
                                 }

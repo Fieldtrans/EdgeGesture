@@ -61,8 +61,7 @@ import com.example.myedgegesture.ui.viewmodel.HookStatus
 fun OverviewPage(
     settings: SettingsState,
     onSettingsChange: (SettingsState) -> Unit,
-    hookStatus: HookStatus,
-    onShowGuide: () -> Unit
+    hookStatus: HookStatus
 ) {
     val context = LocalContext.current
     var showSupportDialog by remember { mutableStateOf(false) }
@@ -70,26 +69,6 @@ fun OverviewPage(
     var crashLog by remember { mutableStateOf<String?>(null) }
 
     StatusCard(settings, hookStatus, onSettingsChange)
-
-    Spacer(Modifier.height(8.dp))
-
-    SettingsSection(t("新手指南", "Quick Start"), Icons.Rounded.TouchApp) {
-        Text(
-            text = t(
-                "第一次使用建议先看 30 秒指南：选择普通模式或增强模式，理解上划指针、摇杆光标、取消圆和保存配置。",
-                "New users should start with a short guide covering Standard/Enhanced mode, swipe-up pointer, Tracker + Cursor, cancel circles, and saving settings."
-            ),
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        OutlinedButton(
-            onClick = onShowGuide,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Text(t("打开新手指南", "Open Guide"))
-        }
-    }
 
     Spacer(Modifier.height(8.dp))
 
