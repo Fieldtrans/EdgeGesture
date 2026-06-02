@@ -162,7 +162,7 @@ private fun LinePointerPage(
         SettingSlider(
             title = t("最大速度", "Max Speed"),
             valueText = t("${settings.pointerMaxSpeed}%屏高/秒", "${settings.pointerMaxSpeed}% screen/s"),
-            description = t("限制指针每秒最多移动多少屏幕高度。", "Limits how much screen height the pointer can move per second."),
+            description = t("线性映射倍率上限，越高同样拇指位移会走得越远。", "Linear mapping scale; higher values move farther for the same thumb travel."),
             value = settings.pointerMaxSpeed,
             range = 40..500,
             onValueChange = { onSettingsChange(settings.copy(pointerMaxSpeed = it)) }

@@ -194,7 +194,9 @@ object OneHandPointer {
             pointerX = initialPointer.first,
             pointerY = initialPointer.second,
             targetX = initialPointer.first,
-            targetY = initialPointer.second
+            targetY = initialPointer.second,
+            waitingForControlOrigin = false,
+            settleMoveCount = 0
         )
         session = newSession
 
@@ -256,8 +258,9 @@ object OneHandPointer {
         fingerY: Float,
         eventTime: Long
     ) {
-        movePointerByJoystick(current, fingerX, fingerY, eventTime)
-        scheduleAnimationFrame(current)
+        if (movePointerByJoystick(current, fingerX, fingerY, eventTime)) {
+            renderPointerAtTarget(current)
+        }
     }
 
     private fun movePointerByJoystick(
@@ -265,7 +268,7 @@ object OneHandPointer {
         fingerX: Float,
         fingerY: Float,
         eventTime: Long
-    ) {
+    ): Boolean {
         if (current.waitingForControlOrigin) {
             current.controlOriginX = fingerX
             current.controlOriginY = fingerY
@@ -294,32 +297,38 @@ object OneHandPointer {
                 current.notificationPreviewProgress
             )
             DebugLog.info("pointer control origin set x=$fingerX y=$fingerY")
-            return
+            return false
         }
 
-        val rawDx = fingerX - current.lastFingerX
-        val rawDy = fingerY - current.lastFingerY
         current.lastFingerX = fingerX
         current.lastFingerY = fingerY
         updateTrackerAnchor(current, fingerX, fingerY)
 
         if (current.settleMoveCount > 0) {
             current.settleMoveCount -= 1
-            return
+            return false
         }
 
-        val (dx, dy) = limitedDelta(rawDx, rawDy, current.maxFingerStep)
+        val dx = fingerX - current.controlOriginX
+        val dy = fingerY - current.controlOriginY
         val distance = sqrt(dx * dx + dy * dy)
-
-        // Dead zone: ignore micro-jitter below threshold
-        if (distance < DEAD_ZONE_PX) return
-
         val gain = pointerGain(current)
 
-        current.targetX = (current.targetX + dx * gain)
-            .coerceIn(current.margin, current.width - current.margin)
-        current.targetY = (current.targetY + dy * gain)
-            .coerceIn(current.margin, current.height - current.margin)
+        val nextTargetX: Float
+        val nextTargetY: Float
+        if (distance < DEAD_ZONE_PX) {
+            nextTargetX = current.basePointerX
+            nextTargetY = current.basePointerY
+        } else {
+            nextTargetX = (current.basePointerX + dx * gain)
+                .coerceIn(current.margin, current.width - current.margin)
+            nextTargetY = (current.basePointerY + dy * gain)
+                .coerceIn(current.margin, current.height - current.margin)
+        }
+
+        current.targetX = nextTargetX
+        current.targetY = nextTargetY
+        return true
     }
 
     private fun updateTrackerAnchor(current: Session, fingerX: Float, fingerY: Float) {
@@ -327,6 +336,27 @@ object OneHandPointer {
 
         current.anchorX = fingerX.coerceIn(0f, current.width)
         current.anchorY = fingerY.coerceIn(0f, current.height)
+    }
+
+    private fun renderPointerAtTarget(current: Session) {
+        current.pointerX = current.targetX
+        current.pointerY = current.targetY
+        current.overlay.moveTo(
+            current.anchorX,
+            current.anchorY,
+            current.controlRadius,
+            current.controlAlpha,
+            current.arrowSize,
+            current.lineWidth,
+            current.trackerBallSize,
+            current.touchArea,
+            current.color,
+            current.pointerX,
+            current.pointerY,
+            current.controlStyle,
+            current.notificationPreviewProgress
+        )
+        updateNotificationShadeHold(current)
     }
 
     /**
@@ -1556,7 +1586,7 @@ object OneHandPointer {
     private const val STARTUP_INSET_DP = 24f
     private const val STARTUP_SAFE_MARGIN_FACTOR = 0.32f
     private const val MAX_FINGER_STEP_DP = 42f
-    private const val CONTROL_START_SKIP_MOVES = 1
+    private const val CONTROL_START_SKIP_MOVES = 0
     private const val LINE_ARROW_GAIN = 1.65f
     private const val TRACKER_CURSOR_GAIN = 2.2f
 
