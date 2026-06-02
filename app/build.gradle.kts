@@ -1,3 +1,4 @@
+import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 import java.util.Properties
 
 plugins {
@@ -79,6 +80,13 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+
+    applicationVariants.all {
+        outputs.all {
+            val variantOutput = this as BaseVariantOutputImpl
+            variantOutput.outputFileName = "EdgeGesture-v$versionName.apk"
+        }
     }
 }
 

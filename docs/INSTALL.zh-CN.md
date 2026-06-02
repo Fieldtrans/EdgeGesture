@@ -24,7 +24,7 @@
 3. 打开 LSPosed。
 4. 在模块列表中启用 EdgeGesture。
 5. 进入 EdgeGesture 的作用域设置。
-6. 勾选 Android 系统/框架相关作用域。
+6. 勾选带推荐标记的 Android 系统/框架作用域。
 7. 重启手机。
 8. 打开 EdgeGesture，确认模块状态显示为已加载或输入过滤器已启动。
 9. 打开启用模块手势开关。

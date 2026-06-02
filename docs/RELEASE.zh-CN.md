@@ -45,13 +45,13 @@ EDGEGESTURE_KEY_PASSWORD=你的密码
 输出位置：
 
 ```text
-app/build/outputs/apk/release/app-release.apk
+app/build/outputs/apk/release/EdgeGesture-v1.3.0.apk
 ```
 
 ## 4. 验证签名
 
 ```bash
-apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk
+apksigner verify --print-certs app/build/outputs/apk/release/EdgeGesture-v1.3.0.apk
 ```
 
 如果显示的是 `CN=EdgeGesture`，说明使用了正式签名。
