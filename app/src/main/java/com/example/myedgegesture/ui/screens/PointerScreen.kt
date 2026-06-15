@@ -49,14 +49,14 @@ import com.example.myedgegesture.ui.utils.t
 private enum class PointerSubPage {
     Line,
     Tracker,
-    Appearance
+    Appearance,
 }
 
 @Composable
 fun PointerPage(
     settings: SettingsState,
     onSettingsChange: (SettingsState) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var subPage by remember {
         mutableStateOf(
@@ -64,41 +64,44 @@ fun PointerPage(
                 PointerSubPage.Tracker
             } else {
                 PointerSubPage.Line
-            }
+            },
         )
     }
 
     LaunchedEffect(settings.pointerControlStyle) {
         if (subPage != PointerSubPage.Appearance) {
-            subPage = if (settings.pointerControlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
-                PointerSubPage.Tracker
-            } else {
-                PointerSubPage.Line
-            }
+            subPage =
+                if (settings.pointerControlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
+                    PointerSubPage.Tracker
+                } else {
+                    PointerSubPage.Line
+                }
         }
     }
 
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         PointerPreview(settings)
 
         LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
             contentPadding = PaddingValues(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             item {
                 SettingsSection(t("指针设置", "Pointer Settings"), Icons.Rounded.RadioButtonChecked) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
                     ) {
                         FilterChip(
                             selected = subPage == PointerSubPage.Line,
@@ -109,7 +112,7 @@ fun PointerPage(
                             label = { Text(t("直线", "Line")) },
                             leadingIcon = {
                                 Icon(Icons.Rounded.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
-                            }
+                            },
                         )
                         FilterChip(
                             selected = subPage == PointerSubPage.Tracker,
@@ -120,7 +123,7 @@ fun PointerPage(
                             label = { Text(t("摇杆", "Tracker")) },
                             leadingIcon = {
                                 Icon(Icons.Rounded.RadioButtonChecked, contentDescription = null, modifier = Modifier.size(18.dp))
-                            }
+                            },
                         )
                         FilterChip(
                             selected = subPage == PointerSubPage.Appearance,
@@ -128,7 +131,7 @@ fun PointerPage(
                             label = { Text(t("外观", "Appearance")) },
                             leadingIcon = {
                                 Icon(Icons.Rounded.Palette, contentDescription = null, modifier = Modifier.size(18.dp))
-                            }
+                            },
                         )
                     }
                 }
@@ -148,7 +151,7 @@ fun PointerPage(
 @Composable
 private fun LinePointerPage(
     settings: SettingsState,
-    onSettingsChange: (SettingsState) -> Unit
+    onSettingsChange: (SettingsState) -> Unit,
 ) {
     SettingsSection(t("直线箭头", "Line Arrow"), Icons.Rounded.Tune) {
         SettingSlider(
@@ -157,7 +160,7 @@ private fun LinePointerPage(
             description = t("线性移动倍率，不随快速滑动额外放大。", "Linear movement multiplier without fast-swipe acceleration."),
             value = settings.pointerSensitivity,
             range = 40..180,
-            onValueChange = { onSettingsChange(settings.copy(pointerSensitivity = it)) }
+            onValueChange = { onSettingsChange(settings.copy(pointerSensitivity = it)) },
         )
         SettingSlider(
             title = t("最大速度", "Max Speed"),
@@ -165,7 +168,7 @@ private fun LinePointerPage(
             description = t("线性映射倍率上限，越高同样拇指位移会走得越远。", "Linear mapping scale; higher values move farther for the same thumb travel."),
             value = settings.pointerMaxSpeed,
             range = 40..500,
-            onValueChange = { onSettingsChange(settings.copy(pointerMaxSpeed = it)) }
+            onValueChange = { onSettingsChange(settings.copy(pointerMaxSpeed = it)) },
         )
         SettingSlider(
             title = t("点击区域", "Touch Area"),
@@ -173,7 +176,7 @@ private fun LinePointerPage(
             description = t("注入点击时模拟手指接触面积。", "Simulated contact area used when injecting a tap."),
             value = settings.pointerTouchAreaDp,
             range = 6..48,
-            onValueChange = { onSettingsChange(settings.copy(pointerTouchAreaDp = it)) }
+            onValueChange = { onSettingsChange(settings.copy(pointerTouchAreaDp = it)) },
         )
     }
 
@@ -184,7 +187,7 @@ private fun LinePointerPage(
             description = t("指针在这个圆内松手会取消点击。", "Release inside this circle cancels the tap."),
             value = settings.pointerRadiusDp,
             range = 48..320,
-            onValueChange = { onSettingsChange(settings.copy(pointerRadiusDp = it)) }
+            onValueChange = { onSettingsChange(settings.copy(pointerRadiusDp = it)) },
         )
         SettingSlider(
             title = t("自动取消时间", "Auto Cancel Time"),
@@ -192,7 +195,7 @@ private fun LinePointerPage(
             description = t("定位太久会自动取消，避免指针一直停留。", "Cancels after a long hold so the pointer does not stay on screen."),
             value = settings.timeoutSeconds,
             range = 2..10,
-            onValueChange = { onSettingsChange(settings.copy(pointerTimeoutMs = it * 1000)) }
+            onValueChange = { onSettingsChange(settings.copy(pointerTimeoutMs = it * 1000)) },
         )
         SettingSlider(
             title = t("平滑度", "Smoothing"),
@@ -200,7 +203,7 @@ private fun LinePointerPage(
             description = t("越高越稳，越低越跟手。", "Higher is steadier; lower follows faster."),
             value = settings.pointerSmoothing,
             range = 5..90,
-            onValueChange = { onSettingsChange(settings.copy(pointerSmoothing = it)) }
+            onValueChange = { onSettingsChange(settings.copy(pointerSmoothing = it)) },
         )
         SettingSlider(
             title = t("边界留白", "Edge Margin"),
@@ -208,7 +211,7 @@ private fun LinePointerPage(
             description = t("指针离屏幕边缘的最小距离。", "Minimum distance between the pointer and screen edges."),
             value = settings.pointerMarginDp,
             range = 0..48,
-            onValueChange = { onSettingsChange(settings.copy(pointerMarginDp = it)) }
+            onValueChange = { onSettingsChange(settings.copy(pointerMarginDp = it)) },
         )
     }
 }
@@ -216,7 +219,7 @@ private fun LinePointerPage(
 @Composable
 private fun TrackerPointerPage(
     settings: SettingsState,
-    onSettingsChange: (SettingsState) -> Unit
+    onSettingsChange: (SettingsState) -> Unit,
 ) {
     SettingsSection(t("摇杆光标", "Tracker Cursor"), Icons.Rounded.RadioButtonChecked) {
         SettingSlider(
@@ -225,7 +228,7 @@ private fun TrackerPointerPage(
             description = t("光标在这个圆内松手会取消点击。", "Release inside this circle cancels the tap."),
             value = settings.pointerRadiusDp,
             range = 48..320,
-            onValueChange = { onSettingsChange(settings.copy(pointerRadiusDp = it)) }
+            onValueChange = { onSettingsChange(settings.copy(pointerRadiusDp = it)) },
         )
         SettingSlider(
             title = t("摇杆灵敏度", "Tracker Sensitivity"),
@@ -233,7 +236,7 @@ private fun TrackerPointerPage(
             description = t("摇杆移动到光标移动的比例。", "Ratio between tracker movement and cursor movement."),
             value = settings.trackerSensitivity,
             range = 40..220,
-            onValueChange = { onSettingsChange(settings.copy(trackerSensitivity = it)) }
+            onValueChange = { onSettingsChange(settings.copy(trackerSensitivity = it)) },
         )
         SettingSlider(
             title = t("摇杆最大速度", "Tracker Max Speed"),
@@ -241,7 +244,7 @@ private fun TrackerPointerPage(
             description = t("限制摇杆模式的光标速度。", "Limits cursor speed in tracker mode."),
             value = settings.trackerMaxSpeed,
             range = 40..500,
-            onValueChange = { onSettingsChange(settings.copy(trackerMaxSpeed = it)) }
+            onValueChange = { onSettingsChange(settings.copy(trackerMaxSpeed = it)) },
         )
         SettingSlider(
             title = t("光标圆大小", "Cursor Size"),
@@ -249,7 +252,7 @@ private fun TrackerPointerPage(
             description = t("松手点击光标圆中心。", "Release taps the center of the cursor circle."),
             value = settings.trackerCursorDp,
             range = 8..56,
-            onValueChange = { onSettingsChange(settings.copy(trackerCursorDp = it)) }
+            onValueChange = { onSettingsChange(settings.copy(trackerCursorDp = it)) },
         )
         SettingSlider(
             title = t("摇杆圆球大小", "Tracker Ball Size"),
@@ -257,7 +260,7 @@ private fun TrackerPointerPage(
             description = t("手指附近显示的摇杆中心点。", "Size of the tracker center shown near your finger."),
             value = settings.trackerBallDp,
             range = 4..32,
-            onValueChange = { onSettingsChange(settings.copy(trackerBallDp = it)) }
+            onValueChange = { onSettingsChange(settings.copy(trackerBallDp = it)) },
         )
         SettingSlider(
             title = t("摇杆平滑度", "Tracker Smoothing"),
@@ -265,7 +268,7 @@ private fun TrackerPointerPage(
             description = t("越高越稳，越低越跟手。", "Higher is steadier; lower follows faster."),
             value = settings.trackerSmoothing,
             range = 5..90,
-            onValueChange = { onSettingsChange(settings.copy(trackerSmoothing = it)) }
+            onValueChange = { onSettingsChange(settings.copy(trackerSmoothing = it)) },
         )
     }
 }
@@ -273,7 +276,7 @@ private fun TrackerPointerPage(
 @Composable
 private fun AppearancePage(
     settings: SettingsState,
-    onSettingsChange: (SettingsState) -> Unit
+    onSettingsChange: (SettingsState) -> Unit,
 ) {
     SettingsSection(t("取消圆", "Cancel Circle"), Icons.Rounded.Palette) {
         SettingSlider(
@@ -282,7 +285,7 @@ private fun AppearancePage(
             description = t("调到 0 就隐藏取消圆。", "Set to 0 to hide the cancel circle."),
             value = settings.pointerControlAlpha,
             range = 0..255,
-            onValueChange = { onSettingsChange(settings.copy(pointerControlAlpha = it)) }
+            onValueChange = { onSettingsChange(settings.copy(pointerControlAlpha = it)) },
         )
     }
 
@@ -293,7 +296,7 @@ private fun AppearancePage(
             description = t("只影响直线箭头模式。", "Only affects line arrow mode."),
             value = settings.pointerArrowDp,
             range = 8..36,
-            onValueChange = { onSettingsChange(settings.copy(pointerArrowDp = it)) }
+            onValueChange = { onSettingsChange(settings.copy(pointerArrowDp = it)) },
         )
         SettingSlider(
             title = t("线条粗细", "Line Width"),
@@ -301,7 +304,7 @@ private fun AppearancePage(
             description = t("只影响直线箭头和摇杆中心点描边。", "Only affects the line arrow and tracker center outline."),
             value = settings.pointerLineDp,
             range = 1..8,
-            onValueChange = { onSettingsChange(settings.copy(pointerLineDp = it)) }
+            onValueChange = { onSettingsChange(settings.copy(pointerLineDp = it)) },
         )
     }
 
@@ -313,7 +316,7 @@ private fun AppearancePage(
             description = null,
             value = settings.pointerColorRed,
             range = 0..255,
-            onValueChange = { onSettingsChange(settings.copy(pointerColorRed = it)) }
+            onValueChange = { onSettingsChange(settings.copy(pointerColorRed = it)) },
         )
         SettingSlider(
             title = t("绿色", "Green"),
@@ -321,7 +324,7 @@ private fun AppearancePage(
             description = null,
             value = settings.pointerColorGreen,
             range = 0..255,
-            onValueChange = { onSettingsChange(settings.copy(pointerColorGreen = it)) }
+            onValueChange = { onSettingsChange(settings.copy(pointerColorGreen = it)) },
         )
         SettingSlider(
             title = t("蓝色", "Blue"),
@@ -329,7 +332,7 @@ private fun AppearancePage(
             description = null,
             value = settings.pointerColorBlue,
             range = 0..255,
-            onValueChange = { onSettingsChange(settings.copy(pointerColorBlue = it)) }
+            onValueChange = { onSettingsChange(settings.copy(pointerColorBlue = it)) },
         )
     }
 }
@@ -341,21 +344,24 @@ fun PointerPreview(settings: SettingsState) {
         Surface(
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f),
             shape = RoundedCornerShape(8.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
         ) {
             Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(184.dp)
-                    .padding(10.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(184.dp)
+                        .padding(10.dp),
             ) {
                 val stroke = Stroke(width = settings.pointerLineDp.dp.toPx(), cap = StrokeCap.Round)
                 val anchor = Offset(size.width * 0.72f, size.height * 0.62f)
-                val cancelRadius = settings.pointerRadiusDp.dp.toPx()
-                    .coerceAtMost(size.height * 0.32f)
-                    .coerceAtMost(size.width * 0.22f)
+                val cancelRadius =
+                    settings.pointerRadiusDp.dp.toPx()
+                        .coerceAtMost(size.height * 0.32f)
+                        .coerceAtMost(size.width * 0.22f)
                 val cancelAlpha = settings.pointerControlAlpha.coerceIn(0, 255) / 255f
 
                 // Draw cancel circle
@@ -364,12 +370,12 @@ fun PointerPreview(settings: SettingsState) {
                         color = color.copy(alpha = cancelAlpha),
                         radius = cancelRadius,
                         center = anchor,
-                        style = Stroke(width = 1.dp.toPx())
+                        style = Stroke(width = 1.dp.toPx()),
                     )
                     drawCircle(
                         color = color.copy(alpha = cancelAlpha * 0.24f),
                         radius = cancelRadius,
-                        center = anchor
+                        center = anchor,
                     )
                 }
 
@@ -379,7 +385,7 @@ fun PointerPreview(settings: SettingsState) {
                     drawCircle(
                         color = color,
                         radius = (settings.trackerBallDp.dp.toPx() / 2f).coerceAtLeast(3.dp.toPx()),
-                        center = anchor
+                        center = anchor,
                     )
                     // Line from anchor to cursor
                     drawLine(
@@ -387,19 +393,19 @@ fun PointerPreview(settings: SettingsState) {
                         start = anchor,
                         end = cursor,
                         strokeWidth = 1.dp.toPx(),
-                        cap = StrokeCap.Round
+                        cap = StrokeCap.Round,
                     )
                     // Cursor circle (fill + stroke)
                     drawCircle(
                         color = color.copy(alpha = 0.20f),
                         radius = settings.trackerCursorDp.dp.toPx() / 2f,
-                        center = cursor
+                        center = cursor,
                     )
                     drawCircle(
                         color = color,
                         radius = settings.trackerCursorDp.dp.toPx() / 2f,
                         center = cursor,
-                        style = Stroke(width = 2.dp.toPx())
+                        style = Stroke(width = 2.dp.toPx()),
                     )
                 } else {
                     val start = Offset(size.width * 0.92f, anchor.y)
@@ -414,20 +420,22 @@ fun PointerPreview(settings: SettingsState) {
 @Composable
 private fun ColorSwatch(color: Color) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(
-            modifier = Modifier
-                .size(34.dp)
-                .background(color, CircleShape)
+            modifier =
+                Modifier
+                    .size(34.dp)
+                    .background(color, CircleShape),
         )
         Text(
             t("当前指针颜色", "Current Pointer Color"),
-            style = MaterialTheme.typography.bodyLarge
+            style = MaterialTheme.typography.bodyLarge,
         )
     }
 }

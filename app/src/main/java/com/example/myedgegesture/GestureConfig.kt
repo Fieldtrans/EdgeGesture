@@ -100,37 +100,44 @@ object GestureConfig {
     const val ACCESSIBILITY_SYSTEM_GESTURE_GAP_DP = 8
     const val ACCESSIBILITY_MAX_SYSTEM_GESTURE_GAP_SCREEN_PERCENT = 0.08f
 
-    val pointerMappingValues = listOf(
-        POINTER_MAPPING_PRECISION
-    )
-    val pointerMappingLabels = listOf(
-        "精确稳定"
-    )
+    val pointerMappingValues =
+        listOf(
+            POINTER_MAPPING_PRECISION,
+        )
+    val pointerMappingLabels =
+        listOf(
+            "精确稳定",
+        )
 
-    val pointerStyleValues = listOf(
-        POINTER_STYLE_LINE_ARROW,
-        POINTER_STYLE_TRACKER_CURSOR
-    )
-    val pointerStyleLabels = listOf(
-        "直线箭头",
-        "Tracker + Cursor"
-    )
+    val pointerStyleValues =
+        listOf(
+            POINTER_STYLE_LINE_ARROW,
+            POINTER_STYLE_TRACKER_CURSOR,
+        )
+    val pointerStyleLabels =
+        listOf(
+            "直线箭头",
+            "Tracker + Cursor",
+        )
 
-    val notificationShadeModes = listOf(
-        NOTIFICATION_SHADE_RELEASE,
-        NOTIFICATION_SHADE_TOUCH
-    )
+    val notificationShadeModes =
+        listOf(
+            NOTIFICATION_SHADE_RELEASE,
+            NOTIFICATION_SHADE_TOUCH,
+        )
 
     val edges = listOf("left", "right")
-    val gestures = listOf(
-        "double_click",
-        "swipe_up"
-    )
-    val actionValues = listOf(
-        ACTION_NONE,
-        ACTION_ONE_HAND_TAP,
-        ACTION_RECENTS,
-    )
+    val gestures =
+        listOf(
+            "double_click",
+            "swipe_up",
+        )
+    val actionValues =
+        listOf(
+            ACTION_NONE,
+            ACTION_ONE_HAND_TAP,
+            ACTION_RECENTS,
+        )
     val actionLabels = listOf("无动作", "单手点击屏幕", "最近任务")
 
     fun actionValuesForGesture(gesture: String): List<String> {
@@ -141,11 +148,17 @@ object GestureConfig {
         }
     }
 
-    fun actionKey(edge: String, gesture: String): String {
+    fun actionKey(
+        edge: String,
+        gesture: String,
+    ): String {
         return "action_${edge}_$gesture"
     }
 
-    fun defaultAction(edge: String, gesture: String): String {
+    fun defaultAction(
+        edge: String,
+        gesture: String,
+    ): String {
         return when (gesture) {
             "swipe_up" -> ACTION_ONE_HAND_TAP
             "double_click" -> ACTION_RECENTS
@@ -153,11 +166,17 @@ object GestureConfig {
         }
     }
 
-    fun sanitizeAction(gesture: String, action: String): String {
+    fun sanitizeAction(
+        gesture: String,
+        action: String,
+    ): String {
         return action.takeIf { it in actionValuesForGesture(gesture) } ?: ACTION_NONE
     }
 
-    fun sanitizeActionKey(key: String, action: String): String {
+    fun sanitizeActionKey(
+        key: String,
+        action: String,
+    ): String {
         val gesture = gestures.firstOrNull { key.endsWith("_$it") } ?: return sanitizeAction("", action)
         return sanitizeAction(gesture, action)
     }

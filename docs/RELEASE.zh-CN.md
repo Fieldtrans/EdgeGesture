@@ -45,7 +45,7 @@ EDGEGESTURE_KEY_PASSWORD=你的密码
 输出位置：
 
 ```text
-app/build/outputs/apk/release/EdgeGesture-v1.3.0.apk
+app/build/outputs/apk/release/EdgeGesture-v1.3.1.apk
 ```
 
 ## 4. 验证签名

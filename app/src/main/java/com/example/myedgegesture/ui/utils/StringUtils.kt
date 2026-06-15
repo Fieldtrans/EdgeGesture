@@ -8,7 +8,10 @@ import java.util.Locale
  *
  * Temporary solution: returns Chinese or English based on system language
  */
-fun t(zh: String, en: String): String {
+fun t(
+    zh: String,
+    en: String,
+): String {
     return if (Locale.getDefault().language.lowercase(Locale.ROOT) == "zh") zh else en
 }
 

@@ -14,7 +14,6 @@ import android.view.KeyEvent
 import de.robv.android.xposed.XposedBridge
 
 object GestureActionDispatcher {
-
     fun perform(
         context: Context,
         edge: EdgeGestureDetector.Edge,
@@ -23,7 +22,7 @@ object GestureActionDispatcher {
         startX: Float,
         startY: Float,
         x: Float,
-        y: Float
+        y: Float,
     ) {
         val action = RuntimeGestureConfig.actionFor(edge, gesture)
         DebugLog.info("dispatch edge=$edge zone=$zone gesture=$gesture action=$action")
@@ -46,14 +45,16 @@ object GestureActionDispatcher {
 
     private fun performHapticFeedback(context: Context) {
         try {
-            val vibrator = if (Build.VERSION.SDK_INT >= 31) {
-                (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-            } else {
-                @Suppress("DEPRECATION")
-                context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-            }
+            val vibrator =
+                if (Build.VERSION.SDK_INT >= 31) {
+                    (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                }
             vibrator.vibrate(VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE))
-        } catch (_: Throwable) {}
+        } catch (_: Throwable) {
+        }
     }
 
     private fun toggleRecents(context: Context) {
@@ -69,17 +70,23 @@ object GestureActionDispatcher {
         return callStatusBarMethod("toggleRecentApps", "toggleRecents")
     }
 
-    private fun callStatusBarMethod(methodName: String, logName: String): Boolean {
+    private fun callStatusBarMethod(
+        methodName: String,
+        logName: String,
+    ): Boolean {
         return try {
-            val service = Class.forName("android.os.ServiceManager")
-                .getMethod("getService", String::class.java)
-                .invoke(null, "statusbar")
-                ?: return false
+            val service =
+                Class.forName("android.os.ServiceManager")
+                    .getMethod("getService", String::class.java)
+                    .invoke(null, "statusbar")
+                    ?: return false
             val stubClass = Class.forName("com.android.internal.statusbar.IStatusBarService\$Stub")
-            val serviceInterface = stubClass.getMethod("asInterface", android.os.IBinder::class.java)
-                .invoke(null, service)
-            val method = serviceInterface.javaClass.methods.firstOrNull { it.name == methodName }
-                ?: return false
+            val serviceInterface =
+                stubClass.getMethod("asInterface", android.os.IBinder::class.java)
+                    .invoke(null, service)
+            val method =
+                serviceInterface.javaClass.methods.firstOrNull { it.name == methodName }
+                    ?: return false
 
             InputInjectionGuard.runIgnoring {
                 method.invoke(serviceInterface)
@@ -91,29 +98,35 @@ object GestureActionDispatcher {
         }
     }
 
-    private fun injectSystemKey(context: Context, keyCode: Int, actionName: String) {
+    private fun injectSystemKey(
+        context: Context,
+        keyCode: Int,
+        actionName: String,
+    ) {
         try {
             val inputManager = context.getSystemService(Context.INPUT_SERVICE) as InputManager
-            val injectMethod = inputManager.javaClass.getMethod(
-                "injectInputEvent",
-                InputEvent::class.java,
-                Int::class.javaPrimitiveType
-            )
+            val injectMethod =
+                inputManager.javaClass.getMethod(
+                    "injectInputEvent",
+                    InputEvent::class.java,
+                    Int::class.javaPrimitiveType,
+                )
             val now = SystemClock.uptimeMillis()
 
             listOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP).forEach { action ->
-                val event = KeyEvent(
-                    now,
-                    now,
-                    action,
-                    keyCode,
-                    0,
-                    0,
-                    KeyCharacterMap.VIRTUAL_KEYBOARD,
-                    0,
-                    KeyEvent.FLAG_FROM_SYSTEM,
-                    InputDevice.SOURCE_KEYBOARD
-                )
+                val event =
+                    KeyEvent(
+                        now,
+                        now,
+                        action,
+                        keyCode,
+                        0,
+                        0,
+                        KeyCharacterMap.VIRTUAL_KEYBOARD,
+                        0,
+                        KeyEvent.FLAG_FROM_SYSTEM,
+                        InputDevice.SOURCE_KEYBOARD,
+                    )
                 InputInjectionGuard.runIgnoring {
                     injectMethod.invoke(inputManager, event, 0)
                 }

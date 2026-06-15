@@ -1,10 +1,7 @@
 package com.example.myedgegesture.ui.viewmodel
 
-import android.content.Context
-import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.myedgegesture.GestureConfig
 import com.example.myedgegesture.data.model.SettingsState
 import com.example.myedgegesture.data.repository.ConfigRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,9 +16,8 @@ import kotlinx.coroutines.launch
  * including loading, saving, importing, and exporting settings.
  */
 class SettingsViewModel(
-    private val configRepository: ConfigRepository
+    private val configRepository: ConfigRepository,
 ) : ViewModel() {
-
     private val _settingsState = MutableStateFlow(SettingsState.default())
     val settingsState: StateFlow<SettingsState> = _settingsState.asStateFlow()
 
@@ -114,13 +110,14 @@ class SettingsViewModel(
 data class HookStatus(
     val text: String,
     val active: Boolean,
-    val enhancedActive: Boolean
+    val enhancedActive: Boolean,
 ) {
     companion object {
-        fun default() = HookStatus(
-            text = "Loading...",
-            active = false,
-            enhancedActive = false
-        )
+        fun default() =
+            HookStatus(
+                text = "Loading...",
+                active = false,
+                enhancedActive = false,
+            )
     }
 }

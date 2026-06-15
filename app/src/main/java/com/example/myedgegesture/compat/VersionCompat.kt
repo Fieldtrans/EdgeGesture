@@ -8,7 +8,6 @@ import androidx.annotation.ChecksSdkIntAtLeast
  * 提供统一的 Android 版本检查方法
  */
 object VersionCompat {
-
     /**
      * Android 8.0 Oreo (API 26)
      */

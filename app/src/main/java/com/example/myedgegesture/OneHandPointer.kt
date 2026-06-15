@@ -78,7 +78,7 @@ object OneHandPointer {
         var notificationShadeRunnable: Runnable? = null,
         var notificationShadeTriggered: Boolean = false,
         var notificationPreviewProgress: Float = 0f,
-        var appearProgress: Float = 0f
+        var appearProgress: Float = 0f,
     )
 
     fun isActive(): Boolean {
@@ -100,7 +100,7 @@ object OneHandPointer {
         anchorY: Float,
         fingerX: Float,
         fingerY: Float,
-        notificationOnly: Boolean = false
+        notificationOnly: Boolean = false,
     ): Boolean {
         if (session != null) return true
 
@@ -114,90 +114,96 @@ object OneHandPointer {
         val lineWidth = dp(context, RuntimeGestureConfig.pointerLineDp.toFloat())
         val trackerBallSize = dp(context, RuntimeGestureConfig.trackerBallDp.toFloat())
         val controlStyle = RuntimeGestureConfig.pointerControlStyle
-        val touchArea = if (controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
-            dp(context, RuntimeGestureConfig.trackerCursorDp.toFloat())
-        } else {
-            dp(context, RuntimeGestureConfig.pointerTouchAreaDp.toFloat())
-        }
-        val smoothingPercent = if (controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
-            RuntimeGestureConfig.trackerSmoothing
-        } else {
-            RuntimeGestureConfig.pointerSmoothing
-        }
+        val touchArea =
+            if (controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
+                dp(context, RuntimeGestureConfig.trackerCursorDp.toFloat())
+            } else {
+                dp(context, RuntimeGestureConfig.pointerTouchAreaDp.toFloat())
+            }
+        val smoothingPercent =
+            if (controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
+                RuntimeGestureConfig.trackerSmoothing
+            } else {
+                RuntimeGestureConfig.pointerSmoothing
+            }
         val smoothing = (smoothingPercent.coerceIn(5, 90) / 100f)
-        val maxSpeedPercent = if (controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
-            RuntimeGestureConfig.trackerMaxSpeed
-        } else {
-            RuntimeGestureConfig.pointerMaxSpeed
-        }
+        val maxSpeedPercent =
+            if (controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
+                RuntimeGestureConfig.trackerMaxSpeed
+            } else {
+                RuntimeGestureConfig.pointerMaxSpeed
+            }
         val speedScale = maxSpeedPercent.coerceIn(40, 500) / 100f
         val maxFingerStep = dp(context, MAX_FINGER_STEP_DP) * speedScale
         val maxPointerSpeed = bounds.second * speedScale
         val notificationHotspotHeight = notificationHotspotHeight(context, bounds.second)
         val notificationPreviewHeight = notificationPreviewHeight(notificationHotspotHeight)
-        val pointerColor = Color.rgb(
-            RuntimeGestureConfig.pointerColorRed.coerceIn(0, 255),
-            RuntimeGestureConfig.pointerColorGreen.coerceIn(0, 255),
-            RuntimeGestureConfig.pointerColorBlue.coerceIn(0, 255)
-        )
+        val pointerColor =
+            Color.rgb(
+                RuntimeGestureConfig.pointerColorRed.coerceIn(0, 255),
+                RuntimeGestureConfig.pointerColorGreen.coerceIn(0, 255),
+                RuntimeGestureConfig.pointerColorBlue.coerceIn(0, 255),
+            )
         val startX = anchorX.coerceIn(margin, bounds.first - margin)
         val startY = anchorY.coerceIn(margin, bounds.second - margin)
         val startupLineLength = maxOf(dp(context, STARTUP_LINE_LENGTH_DP), arrowSize * 4.2f, touchArea * 2.1f)
         val startupInset = maxOf(dp(context, STARTUP_INSET_DP), arrowSize * 1.4f)
-        val initialPointer = if (controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
-            trackerCursorStart(bounds.first, bounds.second, startX, margin)
-        } else {
-            startupPointerFor(
+        val initialPointer =
+            if (controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
+                trackerCursorStart(bounds.first, bounds.second, startX, margin)
+            } else {
+                startupPointerFor(
+                    width = bounds.first,
+                    height = bounds.second,
+                    margin = margin,
+                    anchorX = startX,
+                    anchorY = startY,
+                    lineLength = startupLineLength,
+                    inset = startupInset,
+                )
+            }
+
+        val newSession =
+            Session(
+                contextRef = java.lang.ref.WeakReference(context.applicationContext ?: context),
+                overlay = overlay,
                 width = bounds.first,
                 height = bounds.second,
                 margin = margin,
                 anchorX = startX,
                 anchorY = startY,
-                lineLength = startupLineLength,
-                inset = startupInset
+                controlRadius = controlRadius,
+                controlAlpha = controlAlpha,
+                sensitivity = sensitivity,
+                arrowSize = arrowSize,
+                lineWidth = lineWidth,
+                trackerBallSize = trackerBallSize,
+                touchArea = touchArea,
+                color = pointerColor,
+                startupLineLength = startupLineLength,
+                startupInset = startupInset,
+                maxFingerStep = maxFingerStep,
+                maxPointerSpeed = maxPointerSpeed,
+                notificationHotspotHeight = notificationHotspotHeight,
+                notificationPreviewHeight = notificationPreviewHeight,
+                notificationOnly = notificationOnly,
+                smoothing = smoothing,
+                controlStyle = controlStyle,
+                cursorStartX = initialPointer.first,
+                cursorStartY = initialPointer.second,
+                controlOriginX = fingerX,
+                controlOriginY = fingerY,
+                lastFingerX = fingerX,
+                lastFingerY = fingerY,
+                basePointerX = initialPointer.first,
+                basePointerY = initialPointer.second,
+                pointerX = initialPointer.first,
+                pointerY = initialPointer.second,
+                targetX = initialPointer.first,
+                targetY = initialPointer.second,
+                waitingForControlOrigin = false,
+                settleMoveCount = 0,
             )
-        }
-
-        val newSession = Session(
-            contextRef = java.lang.ref.WeakReference(context.applicationContext ?: context),
-            overlay = overlay,
-            width = bounds.first,
-            height = bounds.second,
-            margin = margin,
-            anchorX = startX,
-            anchorY = startY,
-            controlRadius = controlRadius,
-            controlAlpha = controlAlpha,
-            sensitivity = sensitivity,
-            arrowSize = arrowSize,
-            lineWidth = lineWidth,
-            trackerBallSize = trackerBallSize,
-            touchArea = touchArea,
-            color = pointerColor,
-            startupLineLength = startupLineLength,
-            startupInset = startupInset,
-            maxFingerStep = maxFingerStep,
-            maxPointerSpeed = maxPointerSpeed,
-            notificationHotspotHeight = notificationHotspotHeight,
-            notificationPreviewHeight = notificationPreviewHeight,
-            notificationOnly = notificationOnly,
-            smoothing = smoothing,
-            controlStyle = controlStyle,
-            cursorStartX = initialPointer.first,
-            cursorStartY = initialPointer.second,
-            controlOriginX = fingerX,
-            controlOriginY = fingerY,
-            lastFingerX = fingerX,
-            lastFingerY = fingerY,
-            basePointerX = initialPointer.first,
-            basePointerY = initialPointer.second,
-            pointerX = initialPointer.first,
-            pointerY = initialPointer.second,
-            targetX = initialPointer.first,
-            targetY = initialPointer.second,
-            waitingForControlOrigin = false,
-            settleMoveCount = 0
-        )
         session = newSession
 
         overlay.show(
@@ -213,7 +219,7 @@ object OneHandPointer {
             newSession.pointerX,
             newSession.pointerY,
             newSession.controlStyle,
-            newSession.notificationPreviewProgress
+            newSession.notificationPreviewProgress,
         )
         overlay.startAppearAnimation()
         scheduleTimeout(newSession)
@@ -222,7 +228,10 @@ object OneHandPointer {
         return true
     }
 
-    fun handleMotion(context: Context, event: MotionEvent): Boolean {
+    fun handleMotion(
+        context: Context,
+        event: MotionEvent,
+    ): Boolean {
         return handleRawMotion(context, event.actionMasked, event.rawX, event.rawY, event.eventTime)
     }
 
@@ -231,7 +240,7 @@ object OneHandPointer {
         actionMasked: Int,
         rawX: Float,
         rawY: Float,
-        eventTime: Long
+        eventTime: Long,
     ): Boolean {
         val current = session ?: return false
 
@@ -256,7 +265,7 @@ object OneHandPointer {
         current: Session,
         fingerX: Float,
         fingerY: Float,
-        eventTime: Long
+        eventTime: Long,
     ) {
         if (movePointerByJoystick(current, fingerX, fingerY, eventTime)) {
             renderPointerAtTarget(current)
@@ -267,7 +276,7 @@ object OneHandPointer {
         current: Session,
         fingerX: Float,
         fingerY: Float,
-        eventTime: Long
+        eventTime: Long,
     ): Boolean {
         if (current.waitingForControlOrigin) {
             current.controlOriginX = fingerX
@@ -294,7 +303,7 @@ object OneHandPointer {
                 current.pointerX,
                 current.pointerY,
                 current.controlStyle,
-                current.notificationPreviewProgress
+                current.notificationPreviewProgress,
             )
             DebugLog.info("pointer control origin set x=$fingerX y=$fingerY")
             return false
@@ -320,10 +329,12 @@ object OneHandPointer {
             nextTargetX = current.basePointerX
             nextTargetY = current.basePointerY
         } else {
-            nextTargetX = (current.basePointerX + dx * gain)
-                .coerceIn(current.margin, current.width - current.margin)
-            nextTargetY = (current.basePointerY + dy * gain)
-                .coerceIn(current.margin, current.height - current.margin)
+            nextTargetX =
+                (current.basePointerX + dx * gain)
+                    .coerceIn(current.margin, current.width - current.margin)
+            nextTargetY =
+                (current.basePointerY + dy * gain)
+                    .coerceIn(current.margin, current.height - current.margin)
         }
 
         current.targetX = nextTargetX
@@ -331,7 +342,11 @@ object OneHandPointer {
         return true
     }
 
-    private fun updateTrackerAnchor(current: Session, fingerX: Float, fingerY: Float) {
+    private fun updateTrackerAnchor(
+        current: Session,
+        fingerX: Float,
+        fingerY: Float,
+    ) {
         if (current.controlStyle != GestureConfig.POINTER_STYLE_TRACKER_CURSOR) return
 
         current.anchorX = fingerX.coerceIn(0f, current.width)
@@ -354,7 +369,7 @@ object OneHandPointer {
             current.pointerX,
             current.pointerY,
             current.controlStyle,
-            current.notificationPreviewProgress
+            current.notificationPreviewProgress,
         )
         updateNotificationShadeHold(current)
     }
@@ -364,23 +379,29 @@ object OneHandPointer {
      * Fast finger movement no longer increases gain, which avoids an inertial feel.
      */
     private fun pointerGain(current: Session): Float {
-        val baseSensitivity = if (current.controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
-            (RuntimeGestureConfig.trackerSensitivity / 100f).coerceAtLeast(0.1f)
-        } else {
-            current.sensitivity.coerceAtLeast(0.1f)
-        }
+        val baseSensitivity =
+            if (current.controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
+                (RuntimeGestureConfig.trackerSensitivity / 100f).coerceAtLeast(0.1f)
+            } else {
+                current.sensitivity.coerceAtLeast(0.1f)
+            }
 
-        val modeGain = if (current.controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
-            TRACKER_CURSOR_GAIN
-        } else {
-            LINE_ARROW_GAIN
-        }
+        val modeGain =
+            if (current.controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
+                TRACKER_CURSOR_GAIN
+            } else {
+                LINE_ARROW_GAIN
+            }
 
         val speedGain = (current.maxPointerSpeed / current.height).coerceIn(0.4f, 5f)
         return baseSensitivity * modeGain * speedGain
     }
 
-    private fun limitedDelta(dx: Float, dy: Float, maxStep: Float): Pair<Float, Float> {
+    private fun limitedDelta(
+        dx: Float,
+        dy: Float,
+        maxStep: Float,
+    ): Pair<Float, Float> {
         val distance = sqrt(dx * dx + dy * dy)
         if (distance <= maxStep || distance <= 0f) return dx to dy
 
@@ -392,13 +413,14 @@ object OneHandPointer {
         width: Float,
         height: Float,
         anchorX: Float,
-        margin: Float
+        margin: Float,
     ): Pair<Float, Float> {
-        val x = if (anchorX >= width / 2f) {
-            width * TRACKER_CURSOR_START_X_FROM_RIGHT
-        } else {
-            width * TRACKER_CURSOR_START_X_FROM_LEFT
-        }
+        val x =
+            if (anchorX >= width / 2f) {
+                width * TRACKER_CURSOR_START_X_FROM_RIGHT
+            } else {
+                width * TRACKER_CURSOR_START_X_FROM_LEFT
+            }
         val y = height * TRACKER_CURSOR_START_Y
 
         return x.coerceIn(margin, width - margin) to y.coerceIn(margin, height - margin)
@@ -411,7 +433,7 @@ object OneHandPointer {
         anchorX: Float,
         anchorY: Float,
         lineLength: Float,
-        inset: Float
+        inset: Float,
     ): Pair<Float, Float> {
         val safeMargin = max(margin, lineLength * STARTUP_SAFE_MARGIN_FACTOR)
         val minX = safeMargin.coerceAtMost(width / 2f)
@@ -425,12 +447,13 @@ object OneHandPointer {
         val minDistance = minOf(left, right, top, bottom)
         val canGoUp = anchorY - lineLength >= minY
         val canGoDown = anchorY + lineLength <= maxY
-        val verticalDirection = when {
-            canGoUp -> -1f
-            canGoDown -> 1f
-            top > bottom -> -1f
-            else -> 1f
-        }
+        val verticalDirection =
+            when {
+                canGoUp -> -1f
+                canGoDown -> 1f
+                top > bottom -> -1f
+                else -> 1f
+            }
 
         val rawX: Float
         val rawY: Float
@@ -486,7 +509,10 @@ object OneHandPointer {
         }
     }
 
-    private fun advanceFrame(current: Session, frameTimeNanos: Long): Boolean {
+    private fun advanceFrame(
+        current: Session,
+        frameTimeNanos: Long,
+    ): Boolean {
         val previousFrameTime = current.lastFrameTimeNanos
         current.lastFrameTimeNanos = frameTimeNanos
 
@@ -509,19 +535,20 @@ object OneHandPointer {
                 current.pointerX,
                 current.pointerY,
                 current.controlStyle,
-                current.notificationPreviewProgress
+                current.notificationPreviewProgress,
             )
             updateNotificationShadeHold(current)
             return false
         }
 
         val smoothStep = current.smoothing.coerceIn(0.05f, 1f)
-        val frameSeconds = if (previousFrameTime > 0L) {
-            ((frameTimeNanos - previousFrameTime).coerceAtLeast(1L) / 1_000_000_000f)
-                .coerceIn(1f / 240f, 1f / 30f)
-        } else {
-            1f / 120f
-        }
+        val frameSeconds =
+            if (previousFrameTime > 0L) {
+                ((frameTimeNanos - previousFrameTime).coerceAtLeast(1L) / 1_000_000_000f)
+                    .coerceIn(1f / 240f, 1f / 30f)
+            } else {
+                1f / 120f
+            }
         val maxFrameStep = max(current.maxPointerSpeed * frameSeconds, 1.5f)
         val desiredStep = minOf((distance * smoothStep).coerceAtLeast(0.5f), maxFrameStep)
         val ratio = (desiredStep / distance).coerceIn(0f, 1f)
@@ -541,13 +568,17 @@ object OneHandPointer {
             current.pointerX,
             current.pointerY,
             current.controlStyle,
-            current.notificationPreviewProgress
+            current.notificationPreviewProgress,
         )
         updateNotificationShadeHold(current)
         return true
     }
 
-    private fun finish(context: Context, current: Session, click: Boolean) {
+    private fun finish(
+        context: Context,
+        current: Session,
+        click: Boolean,
+    ) {
         cancelNotificationShadeHold(current)
         cancelTimeout(current)
         val arrowTipX = current.pointerX
@@ -559,7 +590,8 @@ object OneHandPointer {
         session = null
 
         if (shouldClick) {
-            val notificationTap = RuntimeGestureConfig.notificationShadeMode ==
+            val notificationTap =
+                RuntimeGestureConfig.notificationShadeMode ==
                     GestureConfig.NOTIFICATION_SHADE_RELEASE &&
                     isInsideNotificationHotspot(current, arrowTipX, arrowTipY)
             postToMain {
@@ -586,18 +618,19 @@ object OneHandPointer {
     }
 
     private fun scheduleTimeout(current: Session) {
-        val runnable = Runnable {
-            if (session !== current) return@Runnable
-            cancelNotificationShadeHold(current)
-            dismissWithAnimation(current)
-            session = null
-            DebugLog.info("pointer auto canceled by timeout")
-        }
+        val runnable =
+            Runnable {
+                if (session !== current) return@Runnable
+                cancelNotificationShadeHold(current)
+                dismissWithAnimation(current)
+                session = null
+                DebugLog.info("pointer auto canceled by timeout")
+            }
         current.timeoutRunnable = runnable
         postToMain {
             mainHandler?.postDelayed(
                 runnable,
-                RuntimeGestureConfig.pointerTimeoutMs.coerceIn(2_000, 10_000).toLong()
+                RuntimeGestureConfig.pointerTimeoutMs.coerceIn(2_000, 10_000).toLong(),
             )
         }
     }
@@ -633,10 +666,14 @@ object OneHandPointer {
         DebugLog.info("notification shade hold canceled")
     }
 
-    private fun isInsideNotificationHotspot(current: Session, x: Float, y: Float): Boolean {
+    private fun isInsideNotificationHotspot(
+        current: Session,
+        x: Float,
+        y: Float,
+    ): Boolean {
         return y <= current.notificationHotspotHeight &&
-                x >= 0f &&
-                x <= current.width
+            x >= 0f &&
+            x <= current.width
     }
 
     private fun updateNotificationPreview(current: Session) {
@@ -657,7 +694,7 @@ object OneHandPointer {
             current.pointerX,
             current.pointerY,
             current.controlStyle,
-            current.notificationPreviewProgress
+            current.notificationPreviewProgress,
         )
     }
 
@@ -666,25 +703,27 @@ object OneHandPointer {
         if (current.pointerY > current.notificationPreviewHeight) return 0f
 
         val previewSpan = (current.notificationPreviewHeight - current.notificationHotspotHeight).coerceAtLeast(1f)
-        val progress = if (current.pointerY <= current.notificationHotspotHeight) {
-            1f
-        } else {
-            1f - ((current.pointerY - current.notificationHotspotHeight) / previewSpan)
-        }
+        val progress =
+            if (current.pointerY <= current.notificationHotspotHeight) {
+                1f
+            } else {
+                1f - ((current.pointerY - current.notificationHotspotHeight) / previewSpan)
+            }
         return progress.coerceIn(NOTIFICATION_PREVIEW_MIN_PROGRESS, 1f)
     }
 
     private fun expandNotificationShade(context: Context): Boolean {
         return try {
             val statusBarManager = context.getSystemService("statusbar") ?: return false
-            val method = arrayOf("expandNotificationsPanel", "expand")
-                .firstNotNullOfOrNull { name ->
-                    runCatching {
-                        statusBarManager.javaClass.methods.firstOrNull {
-                            it.name == name && it.parameterTypes.isEmpty()
-                        } ?: statusBarManager.javaClass.getDeclaredMethod(name)
-                    }.getOrNull()
-                } ?: return false
+            val method =
+                arrayOf("expandNotificationsPanel", "expand")
+                    .firstNotNullOfOrNull { name ->
+                        runCatching {
+                            statusBarManager.javaClass.methods.firstOrNull {
+                                it.name == name && it.parameterTypes.isEmpty()
+                            } ?: statusBarManager.javaClass.getDeclaredMethod(name)
+                        }.getOrNull()
+                    } ?: return false
 
             method.isAccessible = true
             method.invoke(statusBarManager)
@@ -695,7 +734,10 @@ object OneHandPointer {
         }
     }
 
-    private fun notificationHotspotHeight(context: Context, screenHeight: Float): Float {
+    private fun notificationHotspotHeight(
+        context: Context,
+        screenHeight: Float,
+    ): Float {
         val density = context.resources.displayMetrics.density
         val minHeight = NOTIFICATION_HOTSPOT_MIN_DP * density
         val maxHeight = NOTIFICATION_HOTSPOT_MAX_DP * density
@@ -717,7 +759,12 @@ object OneHandPointer {
         return sqrt(dx * dx + dy * dy)
     }
 
-    private fun injectTap(context: Context, x: Float, y: Float, touchArea: Float) {
+    private fun injectTap(
+        context: Context,
+        x: Float,
+        y: Float,
+        touchArea: Float,
+    ) {
         val downTime = SystemClock.uptimeMillis()
         val moveTime = downTime + TAP_MOVE_DELAY_MS
         val upTime = downTime + TAP_DURATION_MS
@@ -748,22 +795,24 @@ object OneHandPointer {
         action: Int,
         x: Float,
         y: Float,
-        touchArea: Float
+        touchArea: Float,
     ): MotionEvent {
-        val pointerProperties = MotionEvent.PointerProperties().apply {
-            id = 0
-            toolType = MotionEvent.TOOL_TYPE_FINGER
-        }
-        val pointerCoords = MotionEvent.PointerCoords().apply {
-            this.x = x
-            this.y = y
-            pressure = if (action == MotionEvent.ACTION_UP) 0f else 0.7f
-            size = (touchArea / 100f).coerceIn(0.01f, 1f)
-            touchMajor = touchArea
-            touchMinor = touchArea
-            toolMajor = touchArea
-            toolMinor = touchArea
-        }
+        val pointerProperties =
+            MotionEvent.PointerProperties().apply {
+                id = 0
+                toolType = MotionEvent.TOOL_TYPE_FINGER
+            }
+        val pointerCoords =
+            MotionEvent.PointerCoords().apply {
+                this.x = x
+                this.y = y
+                pressure = if (action == MotionEvent.ACTION_UP) 0f else 0.7f
+                size = (touchArea / 100f).coerceIn(0.01f, 1f)
+                touchMajor = touchArea
+                touchMinor = touchArea
+                toolMajor = touchArea
+                toolMinor = touchArea
+            }
 
         return MotionEvent.obtain(
             downTime,
@@ -779,7 +828,7 @@ object OneHandPointer {
             1,
             0,
             InputDevice.SOURCE_TOUCHSCREEN,
-            0
+            0,
         ).also { event ->
             event.setLocation(x, y)
             runCatching {
@@ -789,20 +838,27 @@ object OneHandPointer {
         }
     }
 
-    private fun injectInputEvent(context: Context, event: InputEvent): Boolean {
+    private fun injectInputEvent(
+        context: Context,
+        event: InputEvent,
+    ): Boolean {
         injectWithInputManager(context, event)?.let { return it }
         injectWithInputManagerGlobal(event)?.let { return it }
         return false
     }
 
-    private fun injectWithInputManager(context: Context, event: InputEvent): Boolean? {
+    private fun injectWithInputManager(
+        context: Context,
+        event: InputEvent,
+    ): Boolean? {
         return try {
             val inputManager = context.getSystemService(Context.INPUT_SERVICE) as InputManager
-            val injectMethod = inputManager.javaClass.getMethod(
-                "injectInputEvent",
-                InputEvent::class.java,
-                Int::class.javaPrimitiveType
-            )
+            val injectMethod =
+                inputManager.javaClass.getMethod(
+                    "injectInputEvent",
+                    InputEvent::class.java,
+                    Int::class.javaPrimitiveType,
+                )
             (injectMethod.invoke(inputManager, event, INJECT_INPUT_EVENT_MODE_WAIT_FOR_FINISH) as? Boolean)
                 ?: true
         } catch (t: Throwable) {
@@ -815,11 +871,12 @@ object OneHandPointer {
         return try {
             val globalClass = Class.forName("android.hardware.input.InputManagerGlobal")
             val instance = globalClass.getMethod("getInstance").invoke(null)
-            val injectMethod = globalClass.getMethod(
-                "injectInputEvent",
-                InputEvent::class.java,
-                Int::class.javaPrimitiveType
-            )
+            val injectMethod =
+                globalClass.getMethod(
+                    "injectInputEvent",
+                    InputEvent::class.java,
+                    Int::class.javaPrimitiveType,
+                )
             (injectMethod.invoke(instance, event, INJECT_INPUT_EVENT_MODE_WAIT_FOR_FINISH) as? Boolean)
                 ?: true
         } catch (t: Throwable) {
@@ -834,14 +891,18 @@ object OneHandPointer {
         return bounds.width().toFloat() to bounds.height().toFloat()
     }
 
-    private fun dp(context: Context, value: Float): Float {
+    private fun dp(
+        context: Context,
+        value: Float,
+    ): Float {
         return value * context.resources.displayMetrics.density
     }
 
     private fun postToMain(block: () -> Unit) {
-        val handler = mainHandler ?: Handler(Looper.getMainLooper()).also {
-            mainHandler = it
-        }
+        val handler =
+            mainHandler ?: Handler(Looper.getMainLooper()).also {
+                mainHandler = it
+            }
         if (Looper.myLooper() == handler.looper) {
             block()
         } else {
@@ -869,24 +930,26 @@ object OneHandPointer {
         private var appearAnimator: ValueAnimator? = null
         private var dismissAnimating = false
 
-        private val screenBounds = run {
-            val bounds = windowManager.currentWindowMetrics.bounds
-            bounds.width() to bounds.height()
-        }
+        private val screenBounds =
+            run {
+                val bounds = windowManager.currentWindowMetrics.bounds
+                bounds.width() to bounds.height()
+            }
         private val view = PointerView(context, screenBounds.first, screenBounds.second)
 
-        private val params = WindowManager.LayoutParams(
-            screenBounds.first,
-            screenBounds.second,
-            2027,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+        private val params =
+            WindowManager.LayoutParams(
+                screenBounds.first,
+                screenBounds.second,
+                2027,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.TOP or Gravity.START
-        }
+                PixelFormat.TRANSLUCENT,
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+            }
 
         fun show(
             anchorX: Float,
@@ -901,7 +964,7 @@ object OneHandPointer {
             x: Float,
             y: Float,
             style: String,
-            notificationPreviewProgress: Float
+            notificationPreviewProgress: Float,
         ) {
             postToMain {
                 try {
@@ -922,7 +985,7 @@ object OneHandPointer {
                         x,
                         y,
                         style,
-                        notificationPreviewProgress
+                        notificationPreviewProgress,
                     )
                     DebugLog.info("overlay added")
                 } catch (t: Throwable) {
@@ -944,7 +1007,7 @@ object OneHandPointer {
             x: Float,
             y: Float,
             style: String,
-            notificationPreviewProgress: Float
+            notificationPreviewProgress: Float,
         ) {
             pendingAnchorX = anchorX
             pendingAnchorY = anchorY
@@ -993,7 +1056,7 @@ object OneHandPointer {
                     pendingX,
                     pendingY,
                     pendingStyle,
-                    pendingNotificationPreviewProgress
+                    pendingNotificationPreviewProgress,
                 )
             } catch (t: Throwable) {
                 DebugLog.info("move overlay failed: ${t.message}")
@@ -1005,15 +1068,16 @@ object OneHandPointer {
                 appearAnimator?.cancel()
                 dismissAnimating = false
                 view.appearProgress = 0f
-                appearAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-                    duration = 150
-                    interpolator = DecelerateInterpolator()
-                    addUpdateListener {
-                        view.appearProgress = it.animatedValue as Float
-                        view.postInvalidateOnAnimation()
+                appearAnimator =
+                    ValueAnimator.ofFloat(0f, 1f).apply {
+                        duration = 150
+                        interpolator = DecelerateInterpolator()
+                        addUpdateListener {
+                            view.appearProgress = it.animatedValue as Float
+                            view.postInvalidateOnAnimation()
+                        }
+                        start()
                     }
-                    start()
-                }
             }
         }
 
@@ -1032,12 +1096,14 @@ object OneHandPointer {
                         view.appearProgress = it.animatedValue as Float
                         view.postInvalidateOnAnimation()
                     }
-                    addListener(object : AnimatorListenerAdapter() {
-                        override fun onAnimationEnd(animation: Animator) {
-                            dismiss()
-                            dismissAnimating = false
-                        }
-                    })
+                    addListener(
+                        object : AnimatorListenerAdapter() {
+                            override fun onAnimationEnd(animation: Animator) {
+                                dismiss()
+                                dismissAnimating = false
+                            }
+                        },
+                    )
                     start()
                 }
             }
@@ -1063,7 +1129,7 @@ object OneHandPointer {
         private class PointerView(
             context: Context,
             private val screenWidth: Int,
-            private val screenHeight: Int
+            private val screenHeight: Int,
         ) : View(context) {
             private var anchorX = 0f
             private var anchorY = 0f
@@ -1090,29 +1156,34 @@ object OneHandPointer {
             private val clipBounds = Rect()
             var appearProgress: Float = 1f
 
-            private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.rgb(0, 220, 80)
-                style = Paint.Style.STROKE
-                strokeCap = Paint.Cap.ROUND
-                strokeJoin = Paint.Join.ROUND
-            }
-            private val controlPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.argb(85, 0, 220, 80)
-                style = Paint.Style.STROKE
-                strokeWidth = dp(1.5f)
-            }
-            private val cursorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.rgb(0, 220, 80)
-                style = Paint.Style.FILL
-            }
-            private val cursorStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.WHITE
-                style = Paint.Style.STROKE
-                strokeWidth = dp(2f)
-            }
-            private val notificationArrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                style = Paint.Style.FILL
-            }
+            private val linePaint =
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.rgb(0, 220, 80)
+                    style = Paint.Style.STROKE
+                    strokeCap = Paint.Cap.ROUND
+                    strokeJoin = Paint.Join.ROUND
+                }
+            private val controlPaint =
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.argb(85, 0, 220, 80)
+                    style = Paint.Style.STROKE
+                    strokeWidth = dp(1.5f)
+                }
+            private val cursorPaint =
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.rgb(0, 220, 80)
+                    style = Paint.Style.FILL
+                }
+            private val cursorStrokePaint =
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.WHITE
+                    style = Paint.Style.STROKE
+                    strokeWidth = dp(2f)
+                }
+            private val notificationArrowPaint =
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.FILL
+                }
             private val notificationArrowPath = Path()
 
             fun update(
@@ -1128,7 +1199,7 @@ object OneHandPointer {
                 pointerX: Float,
                 pointerY: Float,
                 style: String,
-                notificationPreviewProgress: Float
+                notificationPreviewProgress: Float,
             ) {
                 val newControlAlpha = controlAlpha.coerceIn(0, 255)
                 val newNotificationPreviewProgress = notificationPreviewProgress.coerceIn(0f, 1f)
@@ -1144,7 +1215,8 @@ object OneHandPointer {
                 val oldBottom = dirtyBottom
                 val hadOldBounds = hasDirtyBounds
                 val alphaChanged = hadOldBounds && this.controlAlpha != newControlAlpha
-                val controlChanged = !hadOldBounds ||
+                val controlChanged =
+                    !hadOldBounds ||
                         this.anchorX != anchorX ||
                         this.anchorY != anchorY ||
                         this.controlRadius != radius ||
@@ -1176,12 +1248,13 @@ object OneHandPointer {
                 linePaint.strokeWidth = lineWidth
                 linePaint.color = color
                 cursorPaint.color = color
-                controlPaint.color = Color.argb(
-                    this.controlAlpha,
-                    Color.red(color),
-                    Color.green(color),
-                    Color.blue(color)
-                )
+                controlPaint.color =
+                    Color.argb(
+                        this.controlAlpha,
+                        Color.red(color),
+                        Color.green(color),
+                        Color.blue(color),
+                    )
                 this.pointerX = pointerX
                 this.pointerY = pointerY
                 updateVisualStart(anchorX, anchorY)
@@ -1201,7 +1274,7 @@ object OneHandPointer {
                         minOf(oldLeft, newDirtyLeft),
                         minOf(oldTop, newDirtyTop),
                         maxOf(oldRight, newDirtyRight),
-                        maxOf(oldBottom, newDirtyBottom)
+                        maxOf(oldBottom, newDirtyBottom),
                     )
                 }
             }
@@ -1264,18 +1337,20 @@ object OneHandPointer {
                 val shaftWidth = dp(4f) + dp(2f) * progress
                 val shaftBottom = top + arrowHeight * 0.56f
                 val tipY = top + arrowHeight
-                val startColor = Color.argb(
-                    (28 + 72 * progress).toInt().coerceIn(0, 100),
-                    Color.red(linePaint.color),
-                    Color.green(linePaint.color),
-                    Color.blue(linePaint.color)
-                )
-                val endColor = Color.argb(
-                    (95 + 105 * progress).toInt().coerceIn(0, 200),
-                    Color.red(linePaint.color),
-                    Color.green(linePaint.color),
-                    Color.blue(linePaint.color)
-                )
+                val startColor =
+                    Color.argb(
+                        (28 + 72 * progress).toInt().coerceIn(0, 100),
+                        Color.red(linePaint.color),
+                        Color.green(linePaint.color),
+                        Color.blue(linePaint.color),
+                    )
+                val endColor =
+                    Color.argb(
+                        (95 + 105 * progress).toInt().coerceIn(0, 200),
+                        Color.red(linePaint.color),
+                        Color.green(linePaint.color),
+                        Color.blue(linePaint.color),
+                    )
 
                 notificationArrowPath.reset()
                 notificationArrowPath.moveTo(cx - shaftWidth / 2f, top)
@@ -1287,15 +1362,16 @@ object OneHandPointer {
                 notificationArrowPath.lineTo(cx - shaftWidth / 2f, shaftBottom)
                 notificationArrowPath.close()
 
-                notificationArrowPaint.shader = LinearGradient(
-                    cx,
-                    top,
-                    cx,
-                    tipY,
-                    startColor,
-                    endColor,
-                    Shader.TileMode.CLAMP
-                )
+                notificationArrowPaint.shader =
+                    LinearGradient(
+                        cx,
+                        top,
+                        cx,
+                        tipY,
+                        startColor,
+                        endColor,
+                        Shader.TileMode.CLAMP,
+                    )
                 canvas.drawPath(notificationArrowPath, notificationArrowPaint)
                 notificationArrowPaint.shader = null
             }
@@ -1332,7 +1408,10 @@ object OneHandPointer {
                 }
             }
 
-            private fun updateVisualStart(x: Float, y: Float) {
+            private fun updateVisualStart(
+                x: Float,
+                y: Float,
+            ) {
                 val viewWidth = drawingWidth()
                 val viewHeight = drawingHeight()
                 val left = x
@@ -1361,7 +1440,13 @@ object OneHandPointer {
                 }
             }
 
-            private fun drawArrowLine(canvas: Canvas, startX: Float, startY: Float, endX: Float, endY: Float) {
+            private fun drawArrowLine(
+                canvas: Canvas,
+                startX: Float,
+                startY: Float,
+                endX: Float,
+                endY: Float,
+            ) {
                 val dx = endX - startX
                 val dy = endY - startY
                 val length = sqrt(dx * dx + dy * dy)
@@ -1383,14 +1468,19 @@ object OneHandPointer {
                 canvas.drawLine(endX, endY, rightX, rightY, linePaint)
             }
 
-            private fun circleIntersectsClip(canvas: Canvas, cx: Float, cy: Float, radius: Float): Boolean {
+            private fun circleIntersectsClip(
+                canvas: Canvas,
+                cx: Float,
+                cy: Float,
+                radius: Float,
+            ): Boolean {
                 canvas.getClipBounds(clipBounds)
                 val pad = max(radius, dp(2f))
                 return clipBounds.intersects(
                     (cx - pad).toInt(),
                     (cy - pad).toInt(),
                     (cx + pad).toInt(),
-                    (cy + pad).toInt()
+                    (cy + pad).toInt(),
                 )
             }
 
@@ -1403,7 +1493,7 @@ object OneHandPointer {
                 arrowSize: Float,
                 lineWidth: Float,
                 style: String,
-                includeControl: Boolean
+                includeControl: Boolean,
             ) {
                 val viewWidth = drawingWidth()
                 val viewHeight = drawingHeight()
@@ -1457,7 +1547,12 @@ object OneHandPointer {
                 return if (height > 0) height else screenHeight
             }
 
-            private fun invalidateDirty(left: Int, top: Int, right: Int, bottom: Int) {
+            private fun invalidateDirty(
+                left: Int,
+                top: Int,
+                right: Int,
+                bottom: Int,
+            ) {
                 if (right <= left || bottom <= top) {
                     return
                 }
@@ -1475,7 +1570,7 @@ object OneHandPointer {
         private val centerX: Float,
         private val centerY: Float,
         touchArea: Float,
-        private val color: Int
+        private val color: Int,
     ) {
         private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
         private val sizePx = max(touchArea * 3.6f, dp(72f)).toInt()
@@ -1483,20 +1578,21 @@ object OneHandPointer {
         private var shown = false
         private var animator: ValueAnimator? = null
 
-        private val params = WindowManager.LayoutParams(
-            sizePx,
-            sizePx,
-            2027,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+        private val params =
+            WindowManager.LayoutParams(
+                sizePx,
+                sizePx,
+                2027,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            x = (centerX - sizePx / 2f).toInt()
-            y = (centerY - sizePx / 2f).toInt()
-        }
+                PixelFormat.TRANSLUCENT,
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+                x = (centerX - sizePx / 2f).toInt()
+                y = (centerY - sizePx / 2f).toInt()
+            }
 
         fun show() {
             try {
@@ -1507,24 +1603,27 @@ object OneHandPointer {
                 return
             }
 
-            animator = ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = CLICK_FEEDBACK_DURATION_MS
-                interpolator = DecelerateInterpolator()
-                addUpdateListener { animation ->
-                    view.progress = animation.animatedValue as Float
-                    view.postInvalidateOnAnimation()
-                }
-                addListener(object : AnimatorListenerAdapter() {
-                    override fun onAnimationEnd(animation: Animator) {
-                        dismiss()
+            animator =
+                ValueAnimator.ofFloat(0f, 1f).apply {
+                    duration = CLICK_FEEDBACK_DURATION_MS
+                    interpolator = DecelerateInterpolator()
+                    addUpdateListener { animation ->
+                        view.progress = animation.animatedValue as Float
+                        view.postInvalidateOnAnimation()
                     }
+                    addListener(
+                        object : AnimatorListenerAdapter() {
+                            override fun onAnimationEnd(animation: Animator) {
+                                dismiss()
+                            }
 
-                    override fun onAnimationCancel(animation: Animator) {
-                        dismiss()
-                    }
-                })
-                start()
-            }
+                            override fun onAnimationCancel(animation: Animator) {
+                                dismiss()
+                            }
+                        },
+                    )
+                    start()
+                }
         }
 
         private fun dismiss() {
@@ -1544,13 +1643,15 @@ object OneHandPointer {
         private class ClickFeedbackView(context: Context, private val baseColor: Int) : View(context) {
             var progress = 0f
 
-            private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                style = Paint.Style.STROKE
-                strokeCap = Paint.Cap.ROUND
-            }
-            private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                style = Paint.Style.FILL
-            }
+            private val ringPaint =
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeCap = Paint.Cap.ROUND
+                }
+            private val dotPaint =
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.FILL
+                }
 
             override fun onDraw(canvas: Canvas) {
                 super.onDraw(canvas)

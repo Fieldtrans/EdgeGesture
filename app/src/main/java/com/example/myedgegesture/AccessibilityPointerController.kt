@@ -20,7 +20,7 @@ class AccessibilityPointerController(
     private val screenHeight: Int,
     private val downX: Float,
     private val downY: Float,
-    private val notificationOnly: Boolean = false
+    private val notificationOnly: Boolean = false,
 ) {
     private val windowManager = service.getSystemService(android.content.Context.WINDOW_SERVICE) as WindowManager
     private val view = PointerOverlayView(service)
@@ -38,24 +38,28 @@ class AccessibilityPointerController(
     private var cancelled = true
     private var notificationTriggered = false
 
-    fun start(fingerX: Float, fingerY: Float) {
+    fun start(
+        fingerX: Float,
+        fingerY: Float,
+    ) {
         if (shown) return
         updatePointer(fingerX, fingerY)
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+        val params =
+            WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            preferredRefreshRate = PREFERRED_REFRESH_RATE
-            layoutInDisplayCutoutMode =
-                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
-        }
+                PixelFormat.TRANSLUCENT,
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+                preferredRefreshRate = PREFERRED_REFRESH_RATE
+                layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            }
 
         runCatching {
             windowManager.addView(view, params)
@@ -66,7 +70,10 @@ class AccessibilityPointerController(
         }
     }
 
-    fun moveTo(fingerX: Float, fingerY: Float) {
+    fun moveTo(
+        fingerX: Float,
+        fingerY: Float,
+    ) {
         if (!shown) return
         updatePointer(fingerX, fingerY)
         maybeTriggerNotificationOnTouch()
@@ -117,32 +124,40 @@ class AccessibilityPointerController(
         shown = false
     }
 
-    private fun updatePointer(fingerX: Float, fingerY: Float) {
+    private fun updatePointer(
+        fingerX: Float,
+        fingerY: Float,
+    ) {
         when (RuntimeGestureConfig.pointerControlStyle) {
             GestureConfig.POINTER_STYLE_TRACKER_CURSOR -> updateTrackerCursor(fingerX, fingerY)
             else -> updateLinePointer(fingerX, fingerY)
         }
         lastFingerX = fingerX
         lastFingerY = fingerY
-        view.snapshot = Snapshot(
-            style = RuntimeGestureConfig.pointerControlStyle,
-            baseX = baseX,
-            baseY = baseY,
-            tipX = tipX,
-            tipY = tipY,
-            controlX = downX,
-            controlY = downY,
-            trackerX = trackerX,
-            trackerY = trackerY,
-            cursorX = cursorX,
-            cursorY = cursorY,
-            cancelled = cancelled
-        )
+        view.snapshot =
+            Snapshot(
+                style = RuntimeGestureConfig.pointerControlStyle,
+                baseX = baseX,
+                baseY = baseY,
+                tipX = tipX,
+                tipY = tipY,
+                controlX = downX,
+                controlY = downY,
+                trackerX = trackerX,
+                trackerY = trackerY,
+                cursorX = cursorX,
+                cursorY = cursorY,
+                cancelled = cancelled,
+            )
     }
 
-    private fun updateLinePointer(fingerX: Float, fingerY: Float) {
+    private fun updateLinePointer(
+        fingerX: Float,
+        fingerY: Float,
+    ) {
         val density = service.resources.displayMetrics.density
-        val scale = (RuntimeGestureConfig.pointerSensitivity.coerceIn(40, 220) / 100f) *
+        val scale =
+            (RuntimeGestureConfig.pointerSensitivity.coerceIn(40, 220) / 100f) *
                 LINE_POINTER_SCALE
         val margin = RuntimeGestureConfig.pointerMarginDp.coerceAtLeast(0) * density
 
@@ -153,9 +168,13 @@ class AccessibilityPointerController(
         cancelled = hypot(tipX - downX, tipY - downY) <= cancelRadius
     }
 
-    private fun updateTrackerCursor(fingerX: Float, fingerY: Float) {
+    private fun updateTrackerCursor(
+        fingerX: Float,
+        fingerY: Float,
+    ) {
         val density = service.resources.displayMetrics.density
-        val scale = (RuntimeGestureConfig.trackerSensitivity.coerceIn(40, 220) / 100f) *
+        val scale =
+            (RuntimeGestureConfig.trackerSensitivity.coerceIn(40, 220) / 100f) *
                 TRACKER_CURSOR_SCALE
         val cursorMargin = RuntimeGestureConfig.trackerCursorDp.coerceAtLeast(8) * density
         val trackerRadius = RuntimeGestureConfig.pointerRadiusDp.coerceAtLeast(32) * density
@@ -169,11 +188,12 @@ class AccessibilityPointerController(
         val rawTrackerDx = fingerX - downX
         val rawTrackerDy = fingerY - downY
         val rawDistance = hypot(rawTrackerDx, rawTrackerDy)
-        val trackerScale = if (rawDistance > trackerRadius && rawDistance > 0f) {
-            trackerRadius / rawDistance
-        } else {
-            1f
-        }
+        val trackerScale =
+            if (rawDistance > trackerRadius && rawDistance > 0f) {
+                trackerRadius / rawDistance
+            } else {
+                1f
+            }
         trackerX = downX + rawTrackerDx * trackerScale
         trackerY = downY + rawTrackerDy * trackerScale
 
@@ -205,10 +225,14 @@ class AccessibilityPointerController(
         DebugLog.info("accessibility notifications touched by pointer x=$x y=$y")
     }
 
-    private fun isInsideNotificationHotspot(x: Float, y: Float): Boolean {
+    private fun isInsideNotificationHotspot(
+        x: Float,
+        y: Float,
+    ): Boolean {
         val density = service.resources.displayMetrics.density
-        val hotspotHeight = (screenHeight * NOTIFICATION_HOTSPOT_SCREEN_FRACTION)
-            .coerceIn(NOTIFICATION_HOTSPOT_MIN_DP * density, NOTIFICATION_HOTSPOT_MAX_DP * density)
+        val hotspotHeight =
+            (screenHeight * NOTIFICATION_HOTSPOT_SCREEN_FRACTION)
+                .coerceIn(NOTIFICATION_HOTSPOT_MIN_DP * density, NOTIFICATION_HOTSPOT_MAX_DP * density)
         return y <= hotspotHeight && x >= 0f && x <= screenWidth
     }
 
@@ -224,24 +248,27 @@ class AccessibilityPointerController(
         val trackerY: Float,
         val cursorX: Float,
         val cursorY: Float,
-        val cancelled: Boolean
+        val cancelled: Boolean,
     )
 
     private class PointerOverlayView(context: android.content.Context) : View(context) {
         var snapshot: Snapshot? = null
 
-        private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeCap = Paint.Cap.ROUND
-            strokeJoin = Paint.Join.ROUND
-        }
-        private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.FILL
-        }
-        private val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeCap = Paint.Cap.ROUND
-        }
+        private val linePaint =
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeCap = Paint.Cap.ROUND
+                strokeJoin = Paint.Join.ROUND
+            }
+        private val fillPaint =
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.FILL
+            }
+        private val circlePaint =
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeCap = Paint.Cap.ROUND
+            }
 
         override fun onDraw(canvas: Canvas) {
             if (RuntimeGestureConfig.pointerControlAlpha <= 0) {
@@ -256,7 +283,11 @@ class AccessibilityPointerController(
             }
         }
 
-        private fun drawLinePointer(canvas: Canvas, data: Snapshot, color: Int) {
+        private fun drawLinePointer(
+            canvas: Canvas,
+            data: Snapshot,
+            color: Int,
+        ) {
             val density = resources.displayMetrics.density
             val controlRadius = RuntimeGestureConfig.pointerRadiusDp.coerceAtLeast(32) * density
             val alpha = RuntimeGestureConfig.pointerControlAlpha.coerceIn(0, 255)
@@ -272,7 +303,11 @@ class AccessibilityPointerController(
             drawArrowHead(canvas, data.baseX, data.baseY, data.tipX, data.tipY, color)
         }
 
-        private fun drawTrackerCursor(canvas: Canvas, data: Snapshot, color: Int) {
+        private fun drawTrackerCursor(
+            canvas: Canvas,
+            data: Snapshot,
+            color: Int,
+        ) {
             val density = resources.displayMetrics.density
             val controlRadius = RuntimeGestureConfig.pointerRadiusDp.coerceAtLeast(32) * density
             val cancelRadius = RuntimeGestureConfig.trackerCancelRadiusDp.coerceAtLeast(24) * density
@@ -304,7 +339,7 @@ class AccessibilityPointerController(
             baseY: Float,
             tipX: Float,
             tipY: Float,
-            color: Int
+            color: Int,
         ) {
             val density = resources.displayMetrics.density
             val arrowSize = RuntimeGestureConfig.pointerArrowDp.coerceAtLeast(8) * density
@@ -318,14 +353,14 @@ class AccessibilityPointerController(
                 tipY,
                 tipX - cos(wingAngleA) * arrowSize,
                 tipY - sin(wingAngleA) * arrowSize,
-                linePaint
+                linePaint,
             )
             canvas.drawLine(
                 tipX,
                 tipY,
                 tipX - cos(wingAngleB) * arrowSize,
                 tipY - sin(wingAngleB) * arrowSize,
-                linePaint
+                linePaint,
             )
         }
 
@@ -333,7 +368,7 @@ class AccessibilityPointerController(
             return Color.rgb(
                 RuntimeGestureConfig.pointerColorRed.coerceIn(0, 255),
                 RuntimeGestureConfig.pointerColorGreen.coerceIn(0, 255),
-                RuntimeGestureConfig.pointerColorBlue.coerceIn(0, 255)
+                RuntimeGestureConfig.pointerColorBlue.coerceIn(0, 255),
             )
         }
     }

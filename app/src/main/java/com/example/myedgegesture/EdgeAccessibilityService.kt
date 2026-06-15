@@ -24,13 +24,17 @@ class EdgeAccessibilityService : AccessibilityService() {
     private var receiverRegistered = false
     private var overlaySignature: OverlaySignature? = null
 
-    private val configReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action != GestureConfig.ACTION_CONFIG_CHANGED) return
-            RuntimeGestureConfig.updateFromIntent(intent)
-            refreshEdgeOverlays()
+    private val configReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context,
+                intent: Intent,
+            ) {
+                if (intent.action != GestureConfig.ACTION_CONFIG_CHANGED) return
+                RuntimeGestureConfig.updateFromIntent(intent)
+                refreshEdgeOverlays()
+            }
         }
-    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -58,7 +62,7 @@ class EdgeAccessibilityService : AccessibilityService() {
 
     private fun loadRuntimeConfig() {
         RuntimeGestureConfig.updateFromPreferences(
-            getSharedPreferences(GestureConfig.PREFS_NAME, MODE_PRIVATE)
+            getSharedPreferences(GestureConfig.PREFS_NAME, MODE_PRIVATE),
         )
     }
 
@@ -67,7 +71,7 @@ class EdgeAccessibilityService : AccessibilityService() {
         registerReceiver(
             configReceiver,
             IntentFilter(GestureConfig.ACTION_CONFIG_CHANGED),
-            RECEIVER_NOT_EXPORTED
+            RECEIVER_NOT_EXPORTED,
         )
         receiverRegistered = true
     }
@@ -104,17 +108,18 @@ class EdgeAccessibilityService : AccessibilityService() {
         val height = (bottom - top).coerceAtLeast(1)
         val leftSupported = hasSupportedAccessibilityAction(EdgeGestureDetector.Edge.LEFT)
         val rightSupported = hasSupportedAccessibilityAction(EdgeGestureDetector.Edge.RIGHT)
-        val nextSignature = OverlaySignature(
-            enabled = true,
-            edgeWidthPx = edgeWidthPx,
-            systemGestureGapPx = systemGestureGapPx,
-            top = top,
-            height = height,
-            screenWidth = screenWidth,
-            screenHeight = screenHeight,
-            leftSupported = leftSupported,
-            rightSupported = rightSupported
-        )
+        val nextSignature =
+            OverlaySignature(
+                enabled = true,
+                edgeWidthPx = edgeWidthPx,
+                systemGestureGapPx = systemGestureGapPx,
+                top = top,
+                height = height,
+                screenWidth = screenWidth,
+                screenHeight = screenHeight,
+                leftSupported = leftSupported,
+                rightSupported = rightSupported,
+            )
         if (overlaySignature == nextSignature) {
             return
         }
@@ -129,7 +134,7 @@ class EdgeAccessibilityService : AccessibilityService() {
                 top,
                 screenWidth,
                 screenHeight,
-                systemGestureGapPx
+                systemGestureGapPx,
             )
         }
         if (rightSupported) {
@@ -140,13 +145,13 @@ class EdgeAccessibilityService : AccessibilityService() {
                 top,
                 screenWidth,
                 screenHeight,
-                systemGestureGapPx
+                systemGestureGapPx,
             )
         }
         overlaySignature = nextSignature
 
         DebugLog.info(
-            "accessibility overlays refreshed width=${edgeWidthPx}px height=${height}px top=${top}px"
+            "accessibility overlays refreshed width=${edgeWidthPx}px height=${height}px top=${top}px",
         )
     }
 
@@ -157,35 +162,38 @@ class EdgeAccessibilityService : AccessibilityService() {
         top: Int,
         screenWidth: Int,
         screenHeight: Int,
-        systemGestureGapPx: Int
+        systemGestureGapPx: Int,
     ) {
         val controller = EdgeTouchController(this, edge, screenWidth, screenHeight)
-        val view = View(this).apply {
-            setBackgroundColor(0x00000000)
-            isHapticFeedbackEnabled = false
-            setOnTouchListener { _, event -> controller.onTouch(event) }
-        }
+        val view =
+            View(this).apply {
+                setBackgroundColor(0x00000000)
+                isHapticFeedbackEnabled = false
+                setOnTouchListener { _, event -> controller.onTouch(event) }
+            }
 
-        val params = WindowManager.LayoutParams(
-            width,
-            height,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+        val params =
+            WindowManager.LayoutParams(
+                width,
+                height,
+                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            x = if (edge == EdgeGestureDetector.Edge.LEFT) {
-                systemGestureGapPx
-            } else {
-                screenWidth - width - systemGestureGapPx
+                PixelFormat.TRANSLUCENT,
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+                x =
+                    if (edge == EdgeGestureDetector.Edge.LEFT) {
+                        systemGestureGapPx
+                    } else {
+                        screenWidth - width - systemGestureGapPx
+                    }
+                y = top
+                preferredRefreshRate = PREFERRED_REFRESH_RATE
+                layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
             }
-            y = top
-            preferredRefreshRate = PREFERRED_REFRESH_RATE
-            layoutInDisplayCutoutMode =
-                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
-        }
 
         runCatching {
             windowManager.addView(view, params)
@@ -204,17 +212,22 @@ class EdgeAccessibilityService : AccessibilityService() {
         touchControllers.clear()
     }
 
-    private fun schedulePassThroughTap(x: Float, y: Float, delayMs: Long): Runnable {
-        val runnable = Runnable {
-            DebugLog.info("accessibility pass-through tap x=$x y=$y")
-            removeEdgeOverlays()
-            overlaySignature = null
-            mainHandler.postDelayed({
-                AccessibilityActionDispatcher.tap(this, x, y) {
-                    mainHandler.postDelayed({ refreshEdgeOverlays() }, PASS_THROUGH_RESTORE_DELAY_MS)
-                }
-            }, PASS_THROUGH_TAP_DELAY_MS)
-        }
+    private fun schedulePassThroughTap(
+        x: Float,
+        y: Float,
+        delayMs: Long,
+    ): Runnable {
+        val runnable =
+            Runnable {
+                DebugLog.info("accessibility pass-through tap x=$x y=$y")
+                removeEdgeOverlays()
+                overlaySignature = null
+                mainHandler.postDelayed({
+                    AccessibilityActionDispatcher.tap(this, x, y) {
+                        mainHandler.postDelayed({ refreshEdgeOverlays() }, PASS_THROUGH_RESTORE_DELAY_MS)
+                    }
+                }, PASS_THROUGH_TAP_DELAY_MS)
+            }
         mainHandler.postDelayed(runnable, delayMs.coerceAtLeast(0L))
         return runnable
     }
@@ -234,20 +247,21 @@ class EdgeAccessibilityService : AccessibilityService() {
         val screenWidth: Int,
         val screenHeight: Int,
         val leftSupported: Boolean,
-        val rightSupported: Boolean
+        val rightSupported: Boolean,
     ) {
         companion object {
-            fun disabled() = OverlaySignature(
-                enabled = false,
-                edgeWidthPx = 0,
-                systemGestureGapPx = 0,
-                top = 0,
-                height = 0,
-                screenWidth = 0,
-                screenHeight = 0,
-                leftSupported = false,
-                rightSupported = false
-            )
+            fun disabled() =
+                OverlaySignature(
+                    enabled = false,
+                    edgeWidthPx = 0,
+                    systemGestureGapPx = 0,
+                    top = 0,
+                    height = 0,
+                    screenWidth = 0,
+                    screenHeight = 0,
+                    leftSupported = false,
+                    rightSupported = false,
+                )
         }
     }
 
@@ -255,13 +269,14 @@ class EdgeAccessibilityService : AccessibilityService() {
         val swipeAction = RuntimeGestureConfig.actionFor(edge, "swipe_up")
         val doubleAction = RuntimeGestureConfig.actionFor(edge, "double_click")
         return swipeAction in ACCESSIBILITY_SUPPORTED_SWIPE_ACTIONS ||
-                doubleAction == GestureConfig.ACTION_RECENTS
+            doubleAction == GestureConfig.ACTION_RECENTS
     }
 
     private fun isEnhancedEngineActive(): Boolean {
         return runCatching {
-            val prefs = createDeviceProtectedStorageContext()
-                .getSharedPreferences(GestureConfig.STATUS_PREFS_NAME, MODE_PRIVATE)
+            val prefs =
+                createDeviceProtectedStorageContext()
+                    .getSharedPreferences(GestureConfig.STATUS_PREFS_NAME, MODE_PRIVATE)
             val startedAt = prefs.getLong(GestureConfig.KEY_STATUS_STARTED_AT, 0L)
             val now = SystemClock.elapsedRealtime()
             startedAt > 0L && startedAt <= now
@@ -270,8 +285,9 @@ class EdgeAccessibilityService : AccessibilityService() {
 
     private fun accessibilityEdgeWidthPx(screenWidth: Int): Int {
         val density = resources.displayMetrics.density
-        val requestedPx = RuntimeGestureConfig.edgeWidthDp
-            .coerceAtLeast(GestureConfig.ACCESSIBILITY_MIN_EDGE_WIDTH_DP) * density
+        val requestedPx =
+            RuntimeGestureConfig.edgeWidthDp
+                .coerceAtLeast(GestureConfig.ACCESSIBILITY_MIN_EDGE_WIDTH_DP) * density
         val hardLimitPx = GestureConfig.ACCESSIBILITY_MAX_EDGE_WIDTH_DP * density
         val percentLimitPx = screenWidth * GestureConfig.ACCESSIBILITY_MAX_EDGE_WIDTH_SCREEN_PERCENT
         return requestedPx
@@ -290,18 +306,20 @@ class EdgeAccessibilityService : AccessibilityService() {
     }
 
     private fun activeRegionTop(screenHeight: Int): Int {
-        val start = minOf(
-            RuntimeGestureConfig.triggerRegionStartPercent,
-            RuntimeGestureConfig.triggerRegionEndPercent
-        ).coerceIn(0, 100)
+        val start =
+            minOf(
+                RuntimeGestureConfig.triggerRegionStartPercent,
+                RuntimeGestureConfig.triggerRegionEndPercent,
+            ).coerceIn(0, 100)
         return (screenHeight * start / 100f).toInt()
     }
 
     private fun activeRegionBottom(screenHeight: Int): Int {
-        val end = maxOf(
-            RuntimeGestureConfig.triggerRegionStartPercent,
-            RuntimeGestureConfig.triggerRegionEndPercent
-        ).coerceIn(0, 100)
+        val end =
+            maxOf(
+                RuntimeGestureConfig.triggerRegionStartPercent,
+                RuntimeGestureConfig.triggerRegionEndPercent,
+            ).coerceIn(0, 100)
         return (screenHeight * end / 100f).toInt()
     }
 
@@ -312,7 +330,7 @@ class EdgeAccessibilityService : AccessibilityService() {
         private val service: EdgeAccessibilityService,
         private val edge: EdgeGestureDetector.Edge,
         private val screenWidth: Int,
-        private val screenHeight: Int
+        private val screenHeight: Int,
     ) {
         private var session: TouchSession? = null
         private var pendingTap: PendingTap? = null
@@ -325,12 +343,13 @@ class EdgeAccessibilityService : AccessibilityService() {
 
             return when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    session = TouchSession(
-                        downX = event.rawX,
-                        downY = event.rawY,
-                        createdAt = event.eventTime,
-                        zone = verticalZone(event.rawY)
-                    )
+                    session =
+                        TouchSession(
+                            downX = event.rawX,
+                            downY = event.rawY,
+                            createdAt = event.eventTime,
+                            zone = verticalZone(event.rawY),
+                        )
                     true
                 }
 
@@ -364,7 +383,8 @@ class EdgeAccessibilityService : AccessibilityService() {
 
             val dx = event.rawX - current.downX
             val dy = event.rawY - current.downY
-            val thresholdPx = RuntimeGestureConfig.swipeDistanceDp *
+            val thresholdPx =
+                RuntimeGestureConfig.swipeDistanceDp *
                     service.resources.displayMetrics.density
             if (isConfirmedSwipeUp(dx, dy, thresholdPx)) {
                 current.swipeUpConfirmed = true
@@ -374,17 +394,18 @@ class EdgeAccessibilityService : AccessibilityService() {
                 if (action == GestureConfig.ACTION_ONE_HAND_TAP ||
                     action == GestureConfig.ACTION_NOTIFICATIONS
                 ) {
-                    current.pointerController = AccessibilityPointerController(
-                        service = service,
-                        edge = edge,
-                        screenWidth = screenWidth,
-                        screenHeight = screenHeight,
-                        downX = current.downX,
-                        downY = current.downY,
-                        notificationOnly = action == GestureConfig.ACTION_NOTIFICATIONS
-                    ).also {
-                        it.start(event.rawX, event.rawY)
-                    }
+                    current.pointerController =
+                        AccessibilityPointerController(
+                            service = service,
+                            edge = edge,
+                            screenWidth = screenWidth,
+                            screenHeight = screenHeight,
+                            downX = current.downX,
+                            downY = current.downY,
+                            notificationOnly = action == GestureConfig.ACTION_NOTIFICATIONS,
+                        ).also {
+                            it.start(event.rawX, event.rawY)
+                        }
                     DebugLog.info("accessibility pointer started edge=$edge")
                 } else {
                     DebugLog.info("accessibility swipe confirmed edge=$edge")
@@ -411,7 +432,7 @@ class EdgeAccessibilityService : AccessibilityService() {
                     startX = current.downX,
                     startY = current.downY,
                     x = event.rawX,
-                    y = event.rawY
+                    y = event.rawY,
                 )
                 return
             }
@@ -423,7 +444,10 @@ class EdgeAccessibilityService : AccessibilityService() {
             }
         }
 
-        private fun handleTap(current: TouchSession, event: MotionEvent) {
+        private fun handleTap(
+            current: TouchSession,
+            event: MotionEvent,
+        ) {
             val pending = pendingTap
             if (pending != null && isMatchingDoubleTap(pending, event)) {
                 service.cancelPassThroughTap(pending.passThroughTap)
@@ -436,50 +460,67 @@ class EdgeAccessibilityService : AccessibilityService() {
                     startX = pending.x,
                     startY = pending.y,
                     x = event.rawX,
-                    y = event.rawY
+                    y = event.rawY,
                 )
             } else {
-                val doubleTapEnabled = RuntimeGestureConfig.actionFor(edge, "double_click") ==
+                val doubleTapEnabled =
+                    RuntimeGestureConfig.actionFor(edge, "double_click") ==
                         GestureConfig.ACTION_RECENTS
-                val passThroughTap = service.schedulePassThroughTap(
-                    event.rawX,
-                    event.rawY,
-                    0L
-                )
-                pendingTap = if (doubleTapEnabled) PendingTap(
-                    x = event.rawX,
-                    y = event.rawY,
-                    eventTime = event.eventTime,
-                    passThroughTap = passThroughTap
-                ) else null
+                val passThroughTap =
+                    service.schedulePassThroughTap(
+                        event.rawX,
+                        event.rawY,
+                        0L,
+                    )
+                pendingTap =
+                    if (doubleTapEnabled) {
+                        PendingTap(
+                            x = event.rawX,
+                            y = event.rawY,
+                            eventTime = event.eventTime,
+                            passThroughTap = passThroughTap,
+                        )
+                    } else {
+                        null
+                    }
             }
         }
 
-        private fun isTap(current: TouchSession, event: MotionEvent): Boolean {
+        private fun isTap(
+            current: TouchSession,
+            event: MotionEvent,
+        ): Boolean {
             val density = service.resources.displayMetrics.density
             val tapSlop = TAP_SLOP_DP * density
             return event.eventTime - current.createdAt <= TAP_MAX_HOLD_MS &&
-                    abs(event.rawX - current.downX) <= tapSlop &&
-                    abs(event.rawY - current.downY) <= tapSlop
+                abs(event.rawX - current.downX) <= tapSlop &&
+                abs(event.rawY - current.downY) <= tapSlop
         }
 
-        private fun isMatchingDoubleTap(pending: PendingTap, event: MotionEvent): Boolean {
+        private fun isMatchingDoubleTap(
+            pending: PendingTap,
+            event: MotionEvent,
+        ): Boolean {
             val density = service.resources.displayMetrics.density
             val slop = DOUBLE_TAP_SLOP_DP * density
             return event.eventTime - pending.eventTime <= doubleTapTimeoutMs() &&
-                    abs(event.rawX - pending.x) <= slop &&
-                    abs(event.rawY - pending.y) <= slop &&
-                    RuntimeGestureConfig.actionFor(edge, "double_click") == GestureConfig.ACTION_RECENTS
+                abs(event.rawX - pending.x) <= slop &&
+                abs(event.rawY - pending.y) <= slop &&
+                RuntimeGestureConfig.actionFor(edge, "double_click") == GestureConfig.ACTION_RECENTS
         }
 
         private fun doubleTapTimeoutMs(): Long {
             return RuntimeGestureConfig.doubleTapTimeoutMs.coerceIn(
                 MIN_DOUBLE_TAP_TIMEOUT_MS,
-                MAX_DOUBLE_TAP_TIMEOUT_MS
+                MAX_DOUBLE_TAP_TIMEOUT_MS,
             ).toLong()
         }
 
-        private fun isConfirmedSwipeUp(dx: Float, dy: Float, thresholdPx: Float): Boolean {
+        private fun isConfirmedSwipeUp(
+            dx: Float,
+            dy: Float,
+            thresholdPx: Float,
+        ): Boolean {
             if (dy >= 0f) return false
             val vertical = abs(dy)
             val horizontal = abs(dx)
@@ -502,14 +543,14 @@ class EdgeAccessibilityService : AccessibilityService() {
             val createdAt: Long,
             val zone: String,
             var swipeUpConfirmed: Boolean = false,
-            var pointerController: AccessibilityPointerController? = null
+            var pointerController: AccessibilityPointerController? = null,
         )
 
         private data class PendingTap(
             val x: Float,
             val y: Float,
             val eventTime: Long,
-            val passThroughTap: Runnable?
+            val passThroughTap: Runnable?,
         )
     }
 
@@ -522,12 +563,13 @@ class EdgeAccessibilityService : AccessibilityService() {
         const val DOUBLE_TAP_SLOP_DP = 64f
         const val PASS_THROUGH_TAP_DELAY_MS = 8L
         const val PASS_THROUGH_RESTORE_DELAY_MS = 12L
-        val ACCESSIBILITY_SUPPORTED_SWIPE_ACTIONS = setOf(
-            GestureConfig.ACTION_BACK,
-            GestureConfig.ACTION_HOME,
-            GestureConfig.ACTION_RECENTS,
-            GestureConfig.ACTION_NOTIFICATIONS,
-            GestureConfig.ACTION_ONE_HAND_TAP
-        )
+        val ACCESSIBILITY_SUPPORTED_SWIPE_ACTIONS =
+            setOf(
+                GestureConfig.ACTION_BACK,
+                GestureConfig.ACTION_HOME,
+                GestureConfig.ACTION_RECENTS,
+                GestureConfig.ACTION_NOTIFICATIONS,
+                GestureConfig.ACTION_ONE_HAND_TAP,
+            )
     }
 }

@@ -4,6 +4,7 @@ import android.os.SystemClock
 
 object InputInjectionGuard {
     private val ignoring = ThreadLocal.withInitial { false }
+
     @Volatile private var ignoreUntil = 0L
 
     fun isIgnoring(): Boolean {

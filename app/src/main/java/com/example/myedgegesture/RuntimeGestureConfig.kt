@@ -5,48 +5,83 @@ import android.content.SharedPreferences
 
 object RuntimeGestureConfig {
     @Volatile var enabled: Boolean = GestureConfig.DEFAULT_ENABLED
+
     @Volatile var edgeWidthDp: Int = GestureConfig.DEFAULT_EDGE_WIDTH_DP
+
     @Volatile var swipeDistanceDp: Int = GestureConfig.DEFAULT_SWIPE_DISTANCE_DP
+
     @Volatile var triggerRegionStartPercent: Int = GestureConfig.DEFAULT_TRIGGER_REGION_START_PERCENT
+
     @Volatile var triggerRegionEndPercent: Int = GestureConfig.DEFAULT_TRIGGER_REGION_END_PERCENT
+
     @Volatile var swipeAngleDegrees: Int = GestureConfig.DEFAULT_SWIPE_ANGLE_DEGREES
+
     @Volatile var doubleTapTimeoutMs: Int = GestureConfig.DEFAULT_DOUBLE_TAP_TIMEOUT_MS
+
     @Volatile var notificationShadeMode: String = GestureConfig.DEFAULT_NOTIFICATION_SHADE_MODE
+
     @Volatile var pointerRadiusDp: Int = GestureConfig.DEFAULT_POINTER_RADIUS_DP
+
     @Volatile var pointerControlAlpha: Int = GestureConfig.DEFAULT_POINTER_CONTROL_ALPHA
+
     @Volatile var pointerSensitivity: Int = GestureConfig.DEFAULT_POINTER_SENSITIVITY
+
     @Volatile var pointerArrowDp: Int = GestureConfig.DEFAULT_POINTER_ARROW_DP
+
     @Volatile var pointerTouchAreaDp: Int = GestureConfig.DEFAULT_POINTER_TOUCH_AREA_DP
+
     @Volatile var pointerLineDp: Int = GestureConfig.DEFAULT_POINTER_LINE_DP
+
     @Volatile var pointerMarginDp: Int = GestureConfig.DEFAULT_POINTER_MARGIN_DP
+
     @Volatile var pointerCancelDistanceDp: Int = GestureConfig.DEFAULT_POINTER_CANCEL_DISTANCE_DP
+
     @Volatile var pointerTimeoutMs: Int = GestureConfig.DEFAULT_POINTER_TIMEOUT_MS
+
     @Volatile var pointerSmoothing: Int = GestureConfig.DEFAULT_POINTER_SMOOTHING
+
     @Volatile var pointerMaxSpeed: Int = GestureConfig.DEFAULT_POINTER_MAX_SPEED
+
     @Volatile var pointerCurve: Int = GestureConfig.DEFAULT_POINTER_CURVE
+
     @Volatile var pointerMappingMode: String = GestureConfig.DEFAULT_POINTER_MAPPING_MODE
+
     @Volatile var pointerControlStyle: String = GestureConfig.DEFAULT_POINTER_CONTROL_STYLE
+
     @Volatile var trackerBallDp: Int = GestureConfig.DEFAULT_TRACKER_BALL_DP
+
     @Volatile var trackerCursorDp: Int = GestureConfig.DEFAULT_TRACKER_CURSOR_DP
+
     @Volatile var trackerCancelRadiusDp: Int = GestureConfig.DEFAULT_TRACKER_CANCEL_RADIUS_DP
+
     @Volatile var trackerSensitivity: Int = GestureConfig.DEFAULT_TRACKER_SENSITIVITY
+
     @Volatile var trackerMaxSpeed: Int = GestureConfig.DEFAULT_TRACKER_MAX_SPEED
+
     @Volatile var trackerSmoothing: Int = GestureConfig.DEFAULT_TRACKER_SMOOTHING
+
     @Volatile var pointerColorRed: Int = GestureConfig.DEFAULT_POINTER_COLOR_RED
+
     @Volatile var pointerColorGreen: Int = GestureConfig.DEFAULT_POINTER_COLOR_GREEN
+
     @Volatile var pointerColorBlue: Int = GestureConfig.DEFAULT_POINTER_COLOR_BLUE
+
     @Volatile var hapticFeedbackEnabled: Boolean = GestureConfig.DEFAULT_HAPTIC_FEEDBACK_ENABLED
-    private val actionByKey = mutableMapOf<String, String>().apply {
-        GestureConfig.edges.forEach { edge ->
-            GestureConfig.gestures.forEach { gesture ->
-                val key = GestureConfig.actionKey(edge, gesture)
-                put(key, GestureConfig.defaultAction(edge, gesture))
+    private val actionByKey =
+        mutableMapOf<String, String>().apply {
+            GestureConfig.edges.forEach { edge ->
+                GestureConfig.gestures.forEach { gesture ->
+                    val key = GestureConfig.actionKey(edge, gesture)
+                    put(key, GestureConfig.defaultAction(edge, gesture))
+                }
             }
         }
-    }
 
     @Synchronized
-    fun actionFor(edge: EdgeGestureDetector.Edge, gesture: String): String {
+    fun actionFor(
+        edge: EdgeGestureDetector.Edge,
+        gesture: String,
+    ): String {
         val key = GestureConfig.actionKey(edge.name.lowercase(), gesture)
         return actionByKey[key] ?: GestureConfig.ACTION_NONE
     }
@@ -60,9 +95,10 @@ object RuntimeGestureConfig {
         triggerRegionEndPercent = intent.getIntExtra(GestureConfig.KEY_TRIGGER_REGION_END_PERCENT, triggerRegionEndPercent)
         swipeAngleDegrees = intent.getIntExtra(GestureConfig.KEY_SWIPE_ANGLE_DEGREES, swipeAngleDegrees)
         doubleTapTimeoutMs = intent.getIntExtra(GestureConfig.KEY_DOUBLE_TAP_TIMEOUT_MS, doubleTapTimeoutMs)
-        notificationShadeMode = GestureConfig.sanitizeNotificationShadeMode(
-            intent.getStringExtra(GestureConfig.KEY_NOTIFICATION_SHADE_MODE) ?: notificationShadeMode
-        )
+        notificationShadeMode =
+            GestureConfig.sanitizeNotificationShadeMode(
+                intent.getStringExtra(GestureConfig.KEY_NOTIFICATION_SHADE_MODE) ?: notificationShadeMode,
+            )
         pointerRadiusDp = intent.getIntExtra(GestureConfig.KEY_POINTER_RADIUS_DP, pointerRadiusDp)
         pointerControlAlpha = intent.getIntExtra(GestureConfig.KEY_POINTER_CONTROL_ALPHA, pointerControlAlpha)
         pointerSensitivity = intent.getIntExtra(GestureConfig.KEY_POINTER_SENSITIVITY, pointerSensitivity)
@@ -112,9 +148,10 @@ object RuntimeGestureConfig {
         triggerRegionEndPercent = prefs.getInt(GestureConfig.KEY_TRIGGER_REGION_END_PERCENT, triggerRegionEndPercent)
         swipeAngleDegrees = prefs.getInt(GestureConfig.KEY_SWIPE_ANGLE_DEGREES, swipeAngleDegrees)
         doubleTapTimeoutMs = prefs.getInt(GestureConfig.KEY_DOUBLE_TAP_TIMEOUT_MS, doubleTapTimeoutMs)
-        notificationShadeMode = GestureConfig.sanitizeNotificationShadeMode(
-            prefs.getString(GestureConfig.KEY_NOTIFICATION_SHADE_MODE, notificationShadeMode)
-        )
+        notificationShadeMode =
+            GestureConfig.sanitizeNotificationShadeMode(
+                prefs.getString(GestureConfig.KEY_NOTIFICATION_SHADE_MODE, notificationShadeMode),
+            )
         pointerRadiusDp = prefs.getInt(GestureConfig.KEY_POINTER_RADIUS_DP, pointerRadiusDp)
         pointerControlAlpha = prefs.getInt(GestureConfig.KEY_POINTER_CONTROL_ALPHA, pointerControlAlpha)
         pointerSensitivity = prefs.getInt(GestureConfig.KEY_POINTER_SENSITIVITY, pointerSensitivity)
@@ -147,8 +184,9 @@ object RuntimeGestureConfig {
         GestureConfig.edges.forEach { edge ->
             GestureConfig.gestures.forEach { gesture ->
                 val key = GestureConfig.actionKey(edge, gesture)
-                val savedAction = prefs.getString(key, actionByKey[key])
-                    ?: GestureConfig.defaultAction(edge, gesture)
+                val savedAction =
+                    prefs.getString(key, actionByKey[key])
+                        ?: GestureConfig.defaultAction(edge, gesture)
                 actionByKey[key] = GestureConfig.sanitizeAction(gesture, savedAction)
             }
         }

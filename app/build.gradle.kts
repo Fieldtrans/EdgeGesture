@@ -9,24 +9,26 @@ plugins {
     alias(libs.plugins.ktlint)
 }
 
-val signingProperties = Properties().apply {
-    val file = rootProject.file("signing.properties")
-    if (file.exists()) {
-        file.inputStream().use(::load)
+val signingProperties =
+    Properties().apply {
+        val file = rootProject.file("signing.properties")
+        if (file.exists()) {
+            file.inputStream().use(::load)
+        }
     }
-}
 
-val normalizedSigningProperties = signingProperties.entries.associate { (key, value) ->
-    key.toString()
-        .removePrefix("\uFEFF")
-        .removePrefix("\u00EF\u00BB\u00BF") to value.toString()
-}
+val normalizedSigningProperties =
+    signingProperties.entries.associate { (key, value) ->
+        key.toString()
+            .removePrefix("\uFEFF")
+            .removePrefix("\u00EF\u00BB\u00BF") to value.toString()
+    }
 
-fun signingProperty(name: String): String? =
-    normalizedSigningProperties[name] ?: System.getenv(name)
+fun signingProperty(name: String): String? = normalizedSigningProperties[name] ?: System.getenv(name)
 
 val releaseStoreFile = signingProperty("EDGEGESTURE_STORE_FILE")?.let(rootProject::file)
-val hasReleaseSigning = releaseStoreFile?.exists() == true &&
+val hasReleaseSigning =
+    releaseStoreFile?.exists() == true &&
         signingProperty("EDGEGESTURE_STORE_PASSWORD") != null &&
         signingProperty("EDGEGESTURE_KEY_ALIAS") != null &&
         signingProperty("EDGEGESTURE_KEY_PASSWORD") != null
@@ -37,10 +39,10 @@ android {
 
     defaultConfig {
         applicationId = "com.example.myedgegesture"
-        minSdk = 26  // Android 8.0 - 支持更多设备
+        minSdk = 26 // Android 8.0 - 支持更多设备
         targetSdk = 35
-        versionCode = 15
-        versionName = "1.3.0"
+        versionCode = 16
+        versionName = "1.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -58,16 +60,17 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (hasReleaseSigning) {
-                signingConfigs.getByName("releaseLocal")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            signingConfig =
+                if (hasReleaseSigning) {
+                    signingConfigs.getByName("releaseLocal")
+                } else {
+                    signingConfigs.getByName("debug")
+                }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
     }

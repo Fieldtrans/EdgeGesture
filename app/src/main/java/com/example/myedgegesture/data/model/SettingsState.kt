@@ -42,17 +42,18 @@ data class SettingsState(
     val pointerColorGreen: Int,
     val pointerColorBlue: Int,
     val hapticFeedbackEnabled: Boolean,
-    val actionByKey: Map<String, String>
+    val actionByKey: Map<String, String>,
 ) {
     /**
      * Get pointer color as Compose Color
      */
     val pointerColor: Color
-        get() = Color(
-            red = pointerColorRed.coerceIn(0, 255) / 255f,
-            green = pointerColorGreen.coerceIn(0, 255) / 255f,
-            blue = pointerColorBlue.coerceIn(0, 255) / 255f
-        )
+        get() =
+            Color(
+                red = pointerColorRed.coerceIn(0, 255) / 255f,
+                green = pointerColorGreen.coerceIn(0, 255) / 255f,
+                blue = pointerColorBlue.coerceIn(0, 255) / 255f,
+            )
 
     /**
      * Get timeout in seconds
@@ -140,7 +141,7 @@ data class SettingsState(
             trackerSmoothing = GestureConfig.DEFAULT_TRACKER_SMOOTHING,
             pointerColorRed = GestureConfig.DEFAULT_POINTER_COLOR_RED,
             pointerColorGreen = GestureConfig.DEFAULT_POINTER_COLOR_GREEN,
-            pointerColorBlue = GestureConfig.DEFAULT_POINTER_COLOR_BLUE
+            pointerColorBlue = GestureConfig.DEFAULT_POINTER_COLOR_BLUE,
         )
     }
 
@@ -149,14 +150,15 @@ data class SettingsState(
          * Create default settings state
          */
         fun default(): SettingsState {
-            val actionByKey = buildMap {
-                GestureConfig.edges.forEach { edge ->
-                    GestureConfig.gestures.forEach { gesture ->
-                        val key = GestureConfig.actionKey(edge, gesture)
-                        put(key, GestureConfig.defaultAction(edge, gesture))
+            val actionByKey =
+                buildMap {
+                    GestureConfig.edges.forEach { edge ->
+                        GestureConfig.gestures.forEach { gesture ->
+                            val key = GestureConfig.actionKey(edge, gesture)
+                            put(key, GestureConfig.defaultAction(edge, gesture))
+                        }
                     }
                 }
-            }
 
             return SettingsState(
                 enabled = GestureConfig.DEFAULT_ENABLED,
@@ -190,7 +192,7 @@ data class SettingsState(
                 pointerColorGreen = GestureConfig.DEFAULT_POINTER_COLOR_GREEN,
                 pointerColorBlue = GestureConfig.DEFAULT_POINTER_COLOR_BLUE,
                 hapticFeedbackEnabled = GestureConfig.DEFAULT_HAPTIC_FEEDBACK_ENABLED,
-                actionByKey = actionByKey
+                actionByKey = actionByKey,
             )
         }
 
@@ -198,17 +200,18 @@ data class SettingsState(
          * Import settings from JSON string with strict validation
          */
         fun fromJsonString(text: String): SettingsState {
-            val json = try {
-                JSONObject(text)
-            } catch (e: Exception) {
-                throw IllegalArgumentException("Invalid JSON format: ${e.message}")
-            }
+            val json =
+                try {
+                    JSONObject(text)
+                } catch (e: Exception) {
+                    throw IllegalArgumentException("Invalid JSON format: ${e.message}")
+                }
 
             // Validate schema version
             val schemaVersion = json.optInt("schemaVersion", -1)
             if (schemaVersion < 1 || schemaVersion > 1) {
                 throw IllegalArgumentException(
-                    "Unsupported schema version: $schemaVersion (supported: 1)"
+                    "Unsupported schema version: $schemaVersion (supported: 1)",
                 )
             }
 
@@ -219,104 +222,156 @@ data class SettingsState(
             }
 
             val actionsJson = json.optJSONObject("actionByKey") ?: json.optJSONObject("actions")
-            val actionByKey = buildMap {
-                GestureConfig.edges.forEach { edge ->
-                    GestureConfig.gestures.forEach { gesture ->
-                        val key = GestureConfig.actionKey(edge, gesture)
-                        val imported = actionsJson?.optString(key).orEmpty()
-                        put(
-                            key,
-                            GestureConfig.sanitizeAction(
-                                gesture,
-                                imported.takeIf { it in GestureConfig.actionValues }
-                                    ?: GestureConfig.defaultAction(edge, gesture)
+            val actionByKey =
+                buildMap {
+                    GestureConfig.edges.forEach { edge ->
+                        GestureConfig.gestures.forEach { gesture ->
+                            val key = GestureConfig.actionKey(edge, gesture)
+                            val imported = actionsJson?.optString(key).orEmpty()
+                            put(
+                                key,
+                                GestureConfig.sanitizeAction(
+                                    gesture,
+                                    imported.takeIf { it in GestureConfig.actionValues }
+                                        ?: GestureConfig.defaultAction(edge, gesture),
+                                ),
                             )
-                        )
+                        }
                     }
                 }
-            }
-            val pointerStyle = json.optString(
-                "pointerControlStyle",
-                GestureConfig.DEFAULT_POINTER_CONTROL_STYLE
-            ).takeIf { it in GestureConfig.pointerStyleValues } ?: GestureConfig.DEFAULT_POINTER_CONTROL_STYLE
+            val pointerStyle =
+                json.optString(
+                    "pointerControlStyle",
+                    GestureConfig.DEFAULT_POINTER_CONTROL_STYLE,
+                ).takeIf { it in GestureConfig.pointerStyleValues } ?: GestureConfig.DEFAULT_POINTER_CONTROL_STYLE
 
             return SettingsState(
                 enabled = json.optBoolean("enabled", GestureConfig.DEFAULT_ENABLED),
-                edgeWidthDp = json.optInt("edgeWidthDp", GestureConfig.DEFAULT_EDGE_WIDTH_DP)
-                    .coerceIn(GestureConfig.ACCESSIBILITY_MIN_EDGE_WIDTH_DP, GestureConfig.ACCESSIBILITY_MAX_EDGE_WIDTH_DP),
-                swipeDistanceDp = json.optInt("swipeDistanceDp", GestureConfig.DEFAULT_SWIPE_DISTANCE_DP)
-                    .coerceIn(20, 200),
-                triggerRegionStartPercent = json.optInt(
-                    "triggerRegionStartPercent",
-                    GestureConfig.DEFAULT_TRIGGER_REGION_START_PERCENT
-                ).coerceIn(0, 100),
-                triggerRegionEndPercent = json.optInt(
-                    "triggerRegionEndPercent",
-                    GestureConfig.DEFAULT_TRIGGER_REGION_END_PERCENT
-                ).coerceIn(0, 100),
-                swipeAngleDegrees = json.optInt("swipeAngleDegrees", GestureConfig.DEFAULT_SWIPE_ANGLE_DEGREES)
-                    .coerceIn(5, 85),
-                doubleTapTimeoutMs = json.optInt(
-                    "doubleTapTimeoutMs",
-                    GestureConfig.DEFAULT_DOUBLE_TAP_TIMEOUT_MS
-                ).coerceIn(100, 500),
-                notificationShadeMode = GestureConfig.sanitizeNotificationShadeMode(
-                    json.optString(
-                        "notificationShadeMode",
-                        GestureConfig.DEFAULT_NOTIFICATION_SHADE_MODE
+                edgeWidthDp =
+                    json.optInt("edgeWidthDp", GestureConfig.DEFAULT_EDGE_WIDTH_DP)
+                        .coerceIn(GestureConfig.ACCESSIBILITY_MIN_EDGE_WIDTH_DP, GestureConfig.ACCESSIBILITY_MAX_EDGE_WIDTH_DP),
+                swipeDistanceDp =
+                    json.optInt("swipeDistanceDp", GestureConfig.DEFAULT_SWIPE_DISTANCE_DP)
+                        .coerceIn(20, 200),
+                triggerRegionStartPercent =
+                    json.optInt(
+                        "triggerRegionStartPercent",
+                        GestureConfig.DEFAULT_TRIGGER_REGION_START_PERCENT,
+                    ).coerceIn(0, 100),
+                triggerRegionEndPercent =
+                    json.optInt(
+                        "triggerRegionEndPercent",
+                        GestureConfig.DEFAULT_TRIGGER_REGION_END_PERCENT,
+                    ).coerceIn(0, 100),
+                swipeAngleDegrees =
+                    json.optInt("swipeAngleDegrees", GestureConfig.DEFAULT_SWIPE_ANGLE_DEGREES)
+                        .coerceIn(5, 85),
+                doubleTapTimeoutMs =
+                    json.optInt(
+                        "doubleTapTimeoutMs",
+                        GestureConfig.DEFAULT_DOUBLE_TAP_TIMEOUT_MS,
+                    ).coerceIn(100, 500),
+                notificationShadeMode =
+                    GestureConfig.sanitizeNotificationShadeMode(
+                        json.optString(
+                            "notificationShadeMode",
+                            GestureConfig.DEFAULT_NOTIFICATION_SHADE_MODE,
+                        ),
+                    ),
+                pointerRadiusDp =
+                    json.optInt("pointerRadiusDp", GestureConfig.DEFAULT_POINTER_RADIUS_DP)
+                        .coerceIn(40, 300),
+                pointerControlAlpha =
+                    json.optInt(
+                        "pointerControlAlpha",
+                        GestureConfig.DEFAULT_POINTER_CONTROL_ALPHA,
+                    ).coerceIn(0, 255),
+                pointerSensitivity =
+                    json.optInt("pointerSensitivity", GestureConfig.DEFAULT_POINTER_SENSITIVITY)
+                        .coerceIn(10, 500),
+                pointerArrowDp =
+                    json.optInt("pointerArrowDp", GestureConfig.DEFAULT_POINTER_ARROW_DP)
+                        .coerceIn(8, 48),
+                pointerTouchAreaDp =
+                    json.optInt(
+                        "pointerTouchAreaDp",
+                        GestureConfig.DEFAULT_POINTER_TOUCH_AREA_DP,
                     )
-                ),
-                pointerRadiusDp = json.optInt("pointerRadiusDp", GestureConfig.DEFAULT_POINTER_RADIUS_DP)
-                    .coerceIn(40, 300),
-                pointerControlAlpha = json.optInt(
-                    "pointerControlAlpha",
-                    GestureConfig.DEFAULT_POINTER_CONTROL_ALPHA
-                ).coerceIn(0, 255),
-                pointerSensitivity = json.optInt("pointerSensitivity", GestureConfig.DEFAULT_POINTER_SENSITIVITY)
-                    .coerceIn(10, 500),
-                pointerArrowDp = json.optInt("pointerArrowDp", GestureConfig.DEFAULT_POINTER_ARROW_DP)
-                    .coerceIn(8, 48),
-                pointerTouchAreaDp = json.optInt("pointerTouchAreaDp", GestureConfig.DEFAULT_POINTER_TOUCH_AREA_DP)
-                    .coerceIn(8, 48),
-                pointerLineDp = json.optInt("pointerLineDp", GestureConfig.DEFAULT_POINTER_LINE_DP)
-                    .coerceIn(1, 10),
-                pointerMarginDp = json.optInt("pointerMarginDp", GestureConfig.DEFAULT_POINTER_MARGIN_DP)
-                    .coerceIn(0, 32),
-                pointerCancelDistanceDp = json.optInt(
-                    "pointerCancelDistanceDp",
-                    GestureConfig.DEFAULT_POINTER_CANCEL_DISTANCE_DP
-                ).coerceIn(50, 500),
-                pointerTimeoutMs = json.optInt("pointerTimeoutMs", GestureConfig.DEFAULT_POINTER_TIMEOUT_MS)
-                    .coerceIn(1000, 30000),
-                pointerSmoothing = json.optInt("pointerSmoothing", GestureConfig.DEFAULT_POINTER_SMOOTHING)
-                    .coerceIn(0, 100),
-                pointerMaxSpeed = json.optInt("pointerMaxSpeed", GestureConfig.DEFAULT_POINTER_MAX_SPEED)
-                    .coerceIn(50, 1000),
-                pointerCurve = json.optInt("pointerCurve", GestureConfig.DEFAULT_POINTER_CURVE)
-                    .coerceIn(50, 300),
+                        .coerceIn(8, 48),
+                pointerLineDp =
+                    json.optInt("pointerLineDp", GestureConfig.DEFAULT_POINTER_LINE_DP)
+                        .coerceIn(1, 10),
+                pointerMarginDp =
+                    json.optInt(
+                        "pointerMarginDp",
+                        GestureConfig.DEFAULT_POINTER_MARGIN_DP,
+                    )
+                        .coerceIn(0, 32),
+                pointerCancelDistanceDp =
+                    json.optInt(
+                        "pointerCancelDistanceDp",
+                        GestureConfig.DEFAULT_POINTER_CANCEL_DISTANCE_DP,
+                    ).coerceIn(50, 500),
+                pointerTimeoutMs =
+                    json.optInt(
+                        "pointerTimeoutMs",
+                        GestureConfig.DEFAULT_POINTER_TIMEOUT_MS,
+                    )
+                        .coerceIn(1000, 30000),
+                pointerSmoothing =
+                    json.optInt(
+                        "pointerSmoothing",
+                        GestureConfig.DEFAULT_POINTER_SMOOTHING,
+                    )
+                        .coerceIn(0, 100),
+                pointerMaxSpeed =
+                    json.optInt(
+                        "pointerMaxSpeed",
+                        GestureConfig.DEFAULT_POINTER_MAX_SPEED,
+                    )
+                        .coerceIn(50, 1000),
+                pointerCurve =
+                    json.optInt(
+                        "pointerCurve",
+                        GestureConfig.DEFAULT_POINTER_CURVE,
+                    )
+                        .coerceIn(50, 300),
                 pointerControlStyle = pointerStyle,
-                trackerBallDp = json.optInt("trackerBallDp", GestureConfig.DEFAULT_TRACKER_BALL_DP)
-                    .coerceIn(4, 40),
-                trackerCursorDp = json.optInt("trackerCursorDp", GestureConfig.DEFAULT_TRACKER_CURSOR_DP)
-                    .coerceIn(8, 60),
-                trackerCancelRadiusDp = json.optInt(
-                    "trackerCancelRadiusDp",
-                    GestureConfig.DEFAULT_TRACKER_CANCEL_RADIUS_DP
-                ).coerceIn(30, 300),
-                trackerSensitivity = json.optInt("trackerSensitivity", GestureConfig.DEFAULT_TRACKER_SENSITIVITY)
-                    .coerceIn(10, 500),
-                trackerMaxSpeed = json.optInt("trackerMaxSpeed", GestureConfig.DEFAULT_TRACKER_MAX_SPEED)
-                    .coerceIn(50, 1000),
-                trackerSmoothing = json.optInt("trackerSmoothing", GestureConfig.DEFAULT_TRACKER_SMOOTHING)
-                    .coerceIn(0, 100),
-                pointerColorRed = json.optInt("pointerColorRed", GestureConfig.DEFAULT_POINTER_COLOR_RED)
-                    .coerceIn(0, 255),
-                pointerColorGreen = json.optInt("pointerColorGreen", GestureConfig.DEFAULT_POINTER_COLOR_GREEN)
-                    .coerceIn(0, 255),
-                pointerColorBlue = json.optInt("pointerColorBlue", GestureConfig.DEFAULT_POINTER_COLOR_BLUE)
-                    .coerceIn(0, 255),
-                hapticFeedbackEnabled = json.optBoolean("hapticFeedbackEnabled", GestureConfig.DEFAULT_HAPTIC_FEEDBACK_ENABLED),
-                actionByKey = actionByKey
+                trackerBallDp =
+                    json.optInt("trackerBallDp", GestureConfig.DEFAULT_TRACKER_BALL_DP)
+                        .coerceIn(4, 40),
+                trackerCursorDp =
+                    json.optInt("trackerCursorDp", GestureConfig.DEFAULT_TRACKER_CURSOR_DP)
+                        .coerceIn(8, 60),
+                trackerCancelRadiusDp =
+                    json.optInt(
+                        "trackerCancelRadiusDp",
+                        GestureConfig.DEFAULT_TRACKER_CANCEL_RADIUS_DP,
+                    ).coerceIn(30, 300),
+                trackerSensitivity =
+                    json.optInt("trackerSensitivity", GestureConfig.DEFAULT_TRACKER_SENSITIVITY)
+                        .coerceIn(10, 500),
+                trackerMaxSpeed =
+                    json.optInt("trackerMaxSpeed", GestureConfig.DEFAULT_TRACKER_MAX_SPEED)
+                        .coerceIn(50, 1000),
+                trackerSmoothing =
+                    json.optInt("trackerSmoothing", GestureConfig.DEFAULT_TRACKER_SMOOTHING)
+                        .coerceIn(0, 100),
+                pointerColorRed =
+                    json.optInt("pointerColorRed", GestureConfig.DEFAULT_POINTER_COLOR_RED)
+                        .coerceIn(0, 255),
+                pointerColorGreen =
+                    json.optInt("pointerColorGreen", GestureConfig.DEFAULT_POINTER_COLOR_GREEN)
+                        .coerceIn(0, 255),
+                pointerColorBlue =
+                    json.optInt("pointerColorBlue", GestureConfig.DEFAULT_POINTER_COLOR_BLUE)
+                        .coerceIn(0, 255),
+                hapticFeedbackEnabled =
+                    json.optBoolean(
+                        "hapticFeedbackEnabled",
+                        GestureConfig.DEFAULT_HAPTIC_FEEDBACK_ENABLED,
+                    ),
+                actionByKey = actionByKey,
             )
         }
     }

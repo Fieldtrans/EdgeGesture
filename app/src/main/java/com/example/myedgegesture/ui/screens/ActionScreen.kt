@@ -44,21 +44,22 @@ import com.example.myedgegesture.ui.utils.t
 @Composable
 fun ActionPage(
     settings: SettingsState,
-    onSettingsChange: (SettingsState) -> Unit
+    onSettingsChange: (SettingsState) -> Unit,
 ) {
     var selectedEdge by remember { mutableStateOf("right") }
     SettingsSection(t("边缘", "Edge"), Icons.Rounded.AccountTree) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
         ) {
             GestureConfig.edges.forEach { edge ->
                 FilterChip(
                     selected = selectedEdge == edge,
                     onClick = { selectedEdge = edge },
-                    label = { Text(edgeLabel(edge)) }
+                    label = { Text(edgeLabel(edge)) },
                 )
             }
         }
@@ -66,29 +67,32 @@ fun ActionPage(
 
     SettingsSection(t("动作参数", "Action Timing"), Icons.Rounded.Tune) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(t("通知栏触发方式", "Notification Trigger"), style = MaterialTheme.typography.bodyLarge)
             Text(
-                text = t(
-                    "预动画保持不变。选择碰到顶部立刻下拉，或松手点击顶部后再下拉。",
-                    "The preview animation stays unchanged. Choose instant pull-down on top touch, or pull down after releasing on the status bar."
-                ),
+                text =
+                    t(
+                        "预动画保持不变。选择碰到顶部立刻下拉，或松手点击顶部后再下拉。",
+                        "The preview animation stays unchanged. Choose instant pull-down on top touch, or " +
+                            "pull down after releasing on the status bar.",
+                    ),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.horizontalScroll(rememberScrollState())
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
             ) {
                 GestureConfig.notificationShadeModes.forEach { mode ->
                     FilterChip(
                         selected = settings.notificationShadeMode == mode,
                         onClick = { onSettingsChange(settings.copy(notificationShadeMode = mode)) },
-                        label = { Text(notificationShadeModeLabel(mode)) }
+                        label = { Text(notificationShadeModeLabel(mode)) },
                     )
                 }
             }
@@ -96,13 +100,14 @@ fun ActionPage(
         SettingSlider(
             title = t("双击等待时间", "Double-Tap Wait"),
             valueText = "${settings.doubleTapTimeoutMs}ms",
-            description = t(
-                "用于判断两次点击是否属于双击；普通边缘点击会优先穿透。",
-                "Used to decide whether two taps count as a double-tap; normal edge taps pass through first."
-            ),
+            description =
+                t(
+                    "用于判断两次点击是否属于双击；普通边缘点击会优先穿透。",
+                    "Used to decide whether two taps count as a double-tap; normal edge taps pass through first.",
+                ),
             value = settings.doubleTapTimeoutMs,
             range = 120..320,
-            onValueChange = { onSettingsChange(settings.copy(doubleTapTimeoutMs = it)) }
+            onValueChange = { onSettingsChange(settings.copy(doubleTapTimeoutMs = it)) },
         )
     }
 
@@ -115,7 +120,7 @@ fun ActionPage(
                 selectedAction = settings.actionByKey[key] ?: GestureConfig.defaultAction(selectedEdge, gesture),
                 onActionSelected = { action ->
                     onSettingsChange(settings.copy(actionByKey = settings.actionByKey + (key to action)))
-                }
+                },
             )
         }
     }
@@ -126,17 +131,18 @@ private fun ActionDropdownRow(
     title: String,
     gesture: String,
     selectedAction: String,
-    onActionSelected: (String) -> Unit
+    onActionSelected: (String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val actions = actionValuesForGesture(gesture)
     val displayAction = selectedAction.takeIf { it in actions } ?: GestureConfig.ACTION_NONE
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Box {
@@ -147,7 +153,7 @@ private fun ActionDropdownRow(
             }
             DropdownMenu(
                 expanded = expanded,
-                onDismissRequest = { expanded = false }
+                onDismissRequest = { expanded = false },
             ) {
                 actions.forEach { action ->
                     DropdownMenuItem(
@@ -155,7 +161,7 @@ private fun ActionDropdownRow(
                         onClick = {
                             expanded = false
                             onActionSelected(action)
-                        }
+                        },
                     )
                 }
             }

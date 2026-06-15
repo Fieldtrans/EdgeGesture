@@ -33,12 +33,17 @@ object DebugLog {
         }
     }
 
-    fun markStatus(context: Context, key: String, message: String) {
+    fun markStatus(
+        context: Context,
+        key: String,
+        message: String,
+    ) {
         try {
-            val moduleContext = context.createPackageContext(
-                "com.example.myedgegesture",
-                Context.CONTEXT_IGNORE_SECURITY
-            )
+            val moduleContext =
+                context.createPackageContext(
+                    "com.example.myedgegesture",
+                    Context.CONTEXT_IGNORE_SECURITY,
+                )
             moduleContext.createDeviceProtectedStorageContext()
                 .getSharedPreferences(GestureConfig.STATUS_PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()

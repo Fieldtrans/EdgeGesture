@@ -33,13 +33,11 @@ enum class GuideIllustrationType {
     EdgeSwipe,
     Control,
     ReleaseTap,
-    Notification
+    Notification,
 }
 
 @Composable
-fun NewUserGuideDialog(
-    onDismiss: () -> Unit
-) {
+fun NewUserGuideDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(t("操作教程", "Tutorial")) },
@@ -47,43 +45,47 @@ fun NewUserGuideDialog(
             Surface(
                 shape = RoundedCornerShape(18.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(Modifier.fillMaxWidth()) {
                     GuideTutorialRow(
                         type = GuideIllustrationType.EdgeSwipe,
                         title = t("斜上划调出", "Swipe Diagonally Up"),
-                        body = t(
-                            "从左右触发区向屏幕内侧斜上划，出现直线箭头或摇杆光标。",
-                            "Swipe diagonally up from a side trigger area to show the line pointer or cursor."
-                        )
+                        body =
+                            t(
+                                "从左右触发区向屏幕内侧斜上划，出现直线箭头或摇杆光标。",
+                                "Swipe diagonally up from a side trigger area to show the line pointer or cursor.",
+                            ),
                     )
                     GuideDivider()
                     GuideTutorialRow(
                         type = GuideIllustrationType.Control,
                         title = t("小范围控制", "Small-Area Control"),
-                        body = t(
-                            "拇指在控制区内移动，箭头尖或光标会映射到远处。",
-                            "Move your thumb in the control area; the pointer maps to distant targets."
-                        )
+                        body =
+                            t(
+                                "拇指在控制区内移动，箭头尖或光标会映射到远处。",
+                                "Move your thumb in the control area; the pointer maps to distant targets.",
+                            ),
                     )
                     GuideDivider()
                     GuideTutorialRow(
                         type = GuideIllustrationType.ReleaseTap,
                         title = t("松手点击", "Release to Tap"),
-                        body = t(
-                            "箭头尖或光标圆心对准目标，松手点击该位置。",
-                            "Aim the arrow tip or cursor center, then release to tap there."
-                        )
+                        body =
+                            t(
+                                "箭头尖或光标圆心对准目标，松手点击该位置。",
+                                "Aim the arrow tip or cursor center, then release to tap there.",
+                            ),
                     )
                     GuideDivider()
                     GuideTutorialRow(
                         type = GuideIllustrationType.Notification,
                         title = t("下拉通知栏", "Notifications"),
-                        body = t(
-                            "移动到顶部会显示预动画，可设置碰到下拉或松手下拉。",
-                            "Moving to the top shows a preview; choose pull on touch or release."
-                        )
+                        body =
+                            t(
+                                "移动到顶部会显示预动画，可设置碰到下拉或松手下拉。",
+                                "Moving to the top shows a preview; choose pull on touch or release.",
+                            ),
                     )
                 }
             }
@@ -97,7 +99,7 @@ fun NewUserGuideDialog(
             TextButton(onClick = onDismiss) {
                 Text(t("稍后再看", "Later"))
             }
-        }
+        },
     )
 }
 
@@ -105,14 +107,15 @@ fun NewUserGuideDialog(
 private fun GuideTutorialRow(
     type: GuideIllustrationType,
     title: String,
-    body: String
+    body: String,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         GuidePhoneIllustration(type)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -120,13 +123,13 @@ private fun GuideTutorialRow(
             Text(
                 text = body,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Text(
             text = ">",
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
         )
     }
 }
@@ -138,7 +141,7 @@ private fun GuideDivider() {
             .fillMaxWidth()
             .height(1.dp)
             .padding(start = 96.dp)
-            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
+            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
     )
 }
 
@@ -150,7 +153,7 @@ private fun GuidePhoneIllustration(type: GuideIllustrationType) {
     val screen = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
 
     Canvas(
-        modifier = Modifier.size(width = 58.dp, height = 78.dp)
+        modifier = Modifier.size(width = 58.dp, height = 78.dp),
     ) {
         val phoneW = size.width * 0.72f
         val phoneH = size.height * 0.92f
@@ -167,14 +170,14 @@ private fun GuidePhoneIllustration(type: GuideIllustrationType) {
             color = fill,
             topLeft = Offset(left, top),
             size = Size(phoneW, phoneH),
-            cornerRadius = CornerRadius(radius, radius)
+            cornerRadius = CornerRadius(radius, radius),
         )
         drawRoundRect(
             color = outline,
             topLeft = Offset(left, top),
             size = Size(phoneW, phoneH),
             cornerRadius = CornerRadius(radius, radius),
-            style = Stroke(width = 2.dp.toPx())
+            style = Stroke(width = 2.dp.toPx()),
         )
 
         when (type) {
@@ -183,13 +186,13 @@ private fun GuidePhoneIllustration(type: GuideIllustrationType) {
                     color = screen,
                     topLeft = Offset(innerLeft, innerTop),
                     size = Size(innerW, innerH),
-                    cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx())
+                    cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx()),
                 )
                 drawRoundRect(
                     color = primary.copy(alpha = 0.16f),
                     topLeft = Offset(left + phoneW - 5.dp.toPx(), top + phoneH * 0.22f),
                     size = Size(5.dp.toPx(), phoneH * 0.56f),
-                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx()),
                 )
                 val start = Offset(left + phoneW - 2.dp.toPx(), top + phoneH * 0.72f)
                 val end = Offset(left + phoneW * 0.45f, top + phoneH * 0.36f)
@@ -202,7 +205,7 @@ private fun GuidePhoneIllustration(type: GuideIllustrationType) {
                     color = screen,
                     topLeft = Offset(innerLeft, innerTop),
                     size = Size(innerW, innerH),
-                    cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx())
+                    cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx()),
                 )
                 val control = Offset(left + phoneW * 0.32f, top + phoneH * 0.72f)
                 val end = Offset(left + phoneW * 0.7f, top + phoneH * 0.28f)
@@ -218,7 +221,7 @@ private fun GuidePhoneIllustration(type: GuideIllustrationType) {
                     color = screen,
                     topLeft = Offset(innerLeft, innerTop),
                     size = Size(innerW, innerH),
-                    cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx())
+                    cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx()),
                 )
                 val anchor = Offset(left + phoneW * 0.05f, top + phoneH * 0.62f)
                 val tip = Offset(left + phoneW * 0.72f, top + phoneH * 0.38f)
@@ -234,13 +237,13 @@ private fun GuidePhoneIllustration(type: GuideIllustrationType) {
                     color = screen,
                     topLeft = Offset(innerLeft, innerTop),
                     size = Size(innerW, innerH),
-                    cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx())
+                    cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx()),
                 )
                 drawRoundRect(
                     color = primary.copy(alpha = 0.18f),
                     topLeft = Offset(innerLeft, innerTop),
                     size = Size(innerW, 7.dp.toPx()),
-                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx()),
                 )
                 val anchor = Offset(left + phoneW * 0.74f, top + phoneH * 0.78f)
                 val tip = Offset(left + phoneW * 0.5f, innerTop + 2.dp.toPx())

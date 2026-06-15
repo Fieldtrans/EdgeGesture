@@ -21,9 +21,9 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,23 +43,24 @@ fun SettingSlider(
     value: Int,
     range: IntRange,
     onValueChange: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             )
             var lastValue by remember { mutableIntStateOf(value) }
             val scaleAnim = remember { Animatable(1f) }
@@ -77,20 +78,20 @@ fun SettingSlider(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.scale(scaleAnim.value)
+                modifier = Modifier.scale(scaleAnim.value),
             )
         }
         if (description != null) {
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         ) {
             FilledTonalIconButton(
                 onClick = {
@@ -98,14 +99,15 @@ fun SettingSlider(
                     if (newValue != value) onValueChange(newValue)
                 },
                 modifier = Modifier.size(32.dp),
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                )
+                colors =
+                    IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    ),
             ) {
                 Icon(
                     Icons.Rounded.Remove,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(16.dp),
                 )
             }
             Slider(
@@ -118,9 +120,10 @@ fun SettingSlider(
                 },
                 valueRange = range.first.toFloat()..range.last.toFloat(),
                 modifier = Modifier.weight(1f),
-                colors = SliderDefaults.colors(
-                    inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)
-                )
+                colors =
+                    SliderDefaults.colors(
+                        inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f),
+                    ),
             )
             FilledTonalIconButton(
                 onClick = {
@@ -128,14 +131,15 @@ fun SettingSlider(
                     if (newValue != value) onValueChange(newValue)
                 },
                 modifier = Modifier.size(32.dp),
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                )
+                colors =
+                    IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    ),
             ) {
                 Icon(
                     Icons.Rounded.Add,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(16.dp),
                 )
             }
         }

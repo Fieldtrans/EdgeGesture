@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
 import android.view.InputDevice
 import android.view.InputEvent
 import android.view.MotionEvent
@@ -19,7 +18,6 @@ import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 
 class MainHook : IXposedHookLoadPackage {
-
     companion object {
         private const val TAG = "EdgeGesture"
         private const val MAX_HELD_TOUCH_EVENTS = 32
@@ -27,38 +25,44 @@ class MainHook : IXposedHookLoadPackage {
     }
 
     private var configReceiverRegistered = false
+
     @Volatile private var inputFilterRegistered = false
+
     @Volatile private var registeringInputFilter = false
+
     @Volatile private var imsInstance: Any? = null
+
     @Volatile private var imsClassLoader: ClassLoader? = null
+
     @Volatile private var systemContext: Context? = null
     private val heldTouchEvents = ArrayDeque<MotionEvent>()
 
-    private val detector = EdgeGestureDetector(
-        object : EdgeGestureDetector.Callbacks {
-            override fun onGesture(
-                context: Context,
-                edge: EdgeGestureDetector.Edge,
-                zone: String,
-                gesture: String,
-                startX: Float,
-                startY: Float,
-                x: Float,
-                y: Float
-            ) {
-                GestureActionDispatcher.perform(
-                    context = context,
-                    edge = edge,
-                    zone = zone,
-                    gesture = gesture,
-                    startX = startX,
-                    startY = startY,
-                    x = x,
-                    y = y
-                )
-            }
-        }
-    )
+    private val detector =
+        EdgeGestureDetector(
+            object : EdgeGestureDetector.Callbacks {
+                override fun onGesture(
+                    context: Context,
+                    edge: EdgeGestureDetector.Edge,
+                    zone: String,
+                    gesture: String,
+                    startX: Float,
+                    startY: Float,
+                    x: Float,
+                    y: Float,
+                ) {
+                    GestureActionDispatcher.perform(
+                        context = context,
+                        edge = edge,
+                        zone = zone,
+                        gesture = gesture,
+                        startX = startX,
+                        startY = startY,
+                        x = x,
+                        y = y,
+                    )
+                }
+            },
+        )
 
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
         if (lpparam.packageName == "com.example.myedgegesture") {
@@ -83,7 +87,7 @@ class MainHook : IXposedHookLoadPackage {
                     override fun replaceHookedMethod(param: MethodHookParam): Any {
                         return true
                     }
-                }
+                },
             )
             XposedBridge.log("$TAG: hooked module health")
         } catch (t: Throwable) {
@@ -93,10 +97,11 @@ class MainHook : IXposedHookLoadPackage {
 
     private fun hookInputManager(classLoader: ClassLoader) {
         try {
-            val ims = XposedHelpers.findClass(
-                "com.android.server.input.InputManagerService",
-                classLoader
-            )
+            val ims =
+                XposedHelpers.findClass(
+                    "com.android.server.input.InputManagerService",
+                    classLoader,
+                )
 
             hookSetInputFilter(ims, classLoader)
             hookNativeInputFilterSwitch(classLoader)
@@ -106,7 +111,10 @@ class MainHook : IXposedHookLoadPackage {
         }
     }
 
-    private fun hookSetInputFilter(ims: Class<*>, classLoader: ClassLoader) {
+    private fun hookSetInputFilter(
+        ims: Class<*>,
+        classLoader: ClassLoader,
+    ) {
         try {
             XposedHelpers.findAndHookMethod(
                 ims,
@@ -123,7 +131,7 @@ class MainHook : IXposedHookLoadPackage {
                             registerInputFilter(param.thisObject, classLoader)
                         }
                     }
-                }
+                },
             )
 
             XposedBridge.log("$TAG: hooked setInputFilter")
@@ -134,10 +142,11 @@ class MainHook : IXposedHookLoadPackage {
 
     private fun hookNativeInputFilterSwitch(classLoader: ClassLoader) {
         try {
-            val nativeClass = XposedHelpers.findClass(
-                "com.android.server.input.NativeInputManagerService\$NativeImpl",
-                classLoader
-            )
+            val nativeClass =
+                XposedHelpers.findClass(
+                    "com.android.server.input.NativeInputManagerService\$NativeImpl",
+                    classLoader,
+                )
 
             XposedHelpers.findAndHookMethod(
                 nativeClass,
@@ -149,7 +158,7 @@ class MainHook : IXposedHookLoadPackage {
                             param.args[0] = true
                         }
                     }
-                }
+                },
             )
 
             XposedBridge.log("$TAG: hooked setInputFilterEnabled")
@@ -158,7 +167,10 @@ class MainHook : IXposedHookLoadPackage {
         }
     }
 
-    private fun hookInputManagerStart(ims: Class<*>, classLoader: ClassLoader) {
+    private fun hookInputManagerStart(
+        ims: Class<*>,
+        classLoader: ClassLoader,
+    ) {
         try {
             XposedHelpers.findAndHookMethod(
                 ims,
@@ -175,7 +187,7 @@ class MainHook : IXposedHookLoadPackage {
                         registerConfigReceiver(context)
                         reloadSavedConfigAndApply(context, "system_server start")
                     }
-                }
+                },
             )
 
             XposedBridge.log("$TAG: hooked InputManagerService.start")
@@ -184,50 +196,55 @@ class MainHook : IXposedHookLoadPackage {
         }
     }
 
-    private fun registerInputFilter(imsInstance: Any, classLoader: ClassLoader) {
+    private fun registerInputFilter(
+        imsInstance: Any,
+        classLoader: ClassLoader,
+    ) {
         if (inputFilterRegistered || registeringInputFilter) return
 
         try {
             registeringInputFilter = true
             val filterClass = XposedHelpers.findClass("android.view.IInputFilter", classLoader)
             val hostClass = XposedHelpers.findClass("android.view.IInputFilterHost", classLoader)
-            val sendInputEvent = hostClass.getMethod(
-                "sendInputEvent",
-                InputEvent::class.java,
-                Int::class.javaPrimitiveType
-            )
+            val sendInputEvent =
+                hostClass.getMethod(
+                    "sendInputEvent",
+                    InputEvent::class.java,
+                    Int::class.javaPrimitiveType,
+                )
 
             var host: Any? = null
-            val filter = Proxy.newProxyInstance(
-                classLoader,
-                arrayOf(filterClass)
-            ) { _, method, args ->
-                when (method.name) {
-                    "install" -> {
-                        host = args?.getOrNull(0)
-                        null
-                    }
-
-                    "uninstall" -> {
-                        host = null
-                        inputFilterRegistered = false
-                        resetInputState()
-                        null
-                    }
-
-                    "filterInputEvent" -> {
-                        val event = args?.getOrNull(0) as? InputEvent
-                        val policyFlags = args?.getOrNull(1) as? Int ?: 0
-                        if (event != null) {
-                            handleFilterEvent(host, sendInputEvent, event, policyFlags)
+            val filter =
+                Proxy.newProxyInstance(
+                    classLoader,
+                    arrayOf(filterClass),
+                ) { _, method, args ->
+                    when (method.name) {
+                        "install" -> {
+                            host = args?.getOrNull(0)
+                            null
                         }
 
-                        null
-                    }
+                        "uninstall" -> {
+                            host = null
+                            inputFilterRegistered = false
+                            resetInputState()
+                            null
+                        }
 
-                    else -> null
+                        "filterInputEvent" -> {
+                            val event = args?.getOrNull(0) as? InputEvent
+                            val policyFlags = args?.getOrNull(1) as? Int ?: 0
+                            if (event != null) {
+                                handleFilterEvent(host, sendInputEvent, event, policyFlags)
+                            }
+
+                            null
+                        }
+
+                        else -> null
+                    }
                 }
-            }
 
             XposedHelpers.callMethod(imsInstance, "setInputFilter", filter)
             inputFilterRegistered = true
@@ -243,12 +260,13 @@ class MainHook : IXposedHookLoadPackage {
         host: Any?,
         sendInputEvent: Method,
         event: InputEvent,
-        policyFlags: Int
+        policyFlags: Int,
     ) {
         val decision = handleInputEvent(event)
-        val consumed = decision == EdgeGestureDetector.Decision.HOLD ||
-            decision == EdgeGestureDetector.Decision.CONSUME ||
-            decision == EdgeGestureDetector.Decision.DROP_HELD_AND_CONSUME
+        val consumed =
+            decision == EdgeGestureDetector.Decision.HOLD ||
+                decision == EdgeGestureDetector.Decision.CONSUME ||
+                decision == EdgeGestureDetector.Decision.DROP_HELD_AND_CONSUME
         when (decision) {
             EdgeGestureDetector.Decision.FORWARD -> {
                 forwardInputEvent(host, sendInputEvent, event, policyFlags)
@@ -275,7 +293,7 @@ class MainHook : IXposedHookLoadPackage {
         host: Any?,
         sendInputEvent: Method,
         event: InputEvent,
-        policyFlags: Int
+        policyFlags: Int,
     ) {
         if (host == null) return
 
@@ -297,7 +315,7 @@ class MainHook : IXposedHookLoadPackage {
     private fun replayHeldTouchEvents(
         host: Any?,
         sendInputEvent: Method,
-        policyFlags: Int
+        policyFlags: Int,
     ) {
         while (heldTouchEvents.isNotEmpty()) {
             val held = heldTouchEvents.removeFirst()
@@ -377,47 +395,54 @@ class MainHook : IXposedHookLoadPackage {
         if (configReceiverRegistered) return
         configReceiverRegistered = true
 
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(receiverContext: Context, intent: Intent) {
-                when (intent.action) {
-                    Intent.ACTION_USER_UNLOCKED,
-                    Intent.ACTION_USER_PRESENT,
-                    Intent.ACTION_SCREEN_ON -> {
-                        reloadSavedConfigAndApply(receiverContext, intent.action ?: "user active")
-                    }
+        val receiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    receiverContext: Context,
+                    intent: Intent,
+                ) {
+                    when (intent.action) {
+                        Intent.ACTION_USER_UNLOCKED,
+                        Intent.ACTION_USER_PRESENT,
+                        Intent.ACTION_SCREEN_ON,
+                        -> {
+                            reloadSavedConfigAndApply(receiverContext, intent.action ?: "user active")
+                        }
 
-                    Intent.ACTION_SCREEN_OFF,
-                    Intent.ACTION_USER_BACKGROUND -> {
-                        resetInputState()
-                        DebugLog.info("input state reset by ${intent.action}")
-                    }
+                        Intent.ACTION_SCREEN_OFF,
+                        Intent.ACTION_USER_BACKGROUND,
+                        -> {
+                            resetInputState()
+                            DebugLog.info("input state reset by ${intent.action}")
+                        }
 
-                    GestureConfig.ACTION_CONFIG_CHANGED -> {
-                        RuntimeGestureConfig.updateFromIntent(intent)
-                        applyRuntimeConfig(receiverContext)
+                        GestureConfig.ACTION_CONFIG_CHANGED -> {
+                            RuntimeGestureConfig.updateFromIntent(intent)
+                            applyRuntimeConfig(receiverContext)
 
-                        XposedBridge.log(
-                            "$TAG: config updated enabled=${RuntimeGestureConfig.enabled} " +
-                                "edge=${RuntimeGestureConfig.edgeWidthDp} " +
-                                "distance=${RuntimeGestureConfig.swipeDistanceDp} " +
-                                "leftUp=${RuntimeGestureConfig.actionFor(EdgeGestureDetector.Edge.LEFT, GESTURE_SWIPE_UP)} " +
-                                "rightUp=${RuntimeGestureConfig.actionFor(EdgeGestureDetector.Edge.RIGHT, GESTURE_SWIPE_UP)}"
-                        )
-                        markRuntimeStatus(receiverContext, "config updated")
+                            XposedBridge.log(
+                                "$TAG: config updated enabled=${RuntimeGestureConfig.enabled} " +
+                                    "edge=${RuntimeGestureConfig.edgeWidthDp} " +
+                                    "distance=${RuntimeGestureConfig.swipeDistanceDp} " +
+                                    "leftUp=${RuntimeGestureConfig.actionFor(EdgeGestureDetector.Edge.LEFT, GESTURE_SWIPE_UP)} " +
+                                    "rightUp=${RuntimeGestureConfig.actionFor(EdgeGestureDetector.Edge.RIGHT, GESTURE_SWIPE_UP)}",
+                            )
+                            markRuntimeStatus(receiverContext, "config updated")
+                        }
                     }
                 }
             }
-        }
 
         try {
-            val filter = IntentFilter().apply {
-                addAction(GestureConfig.ACTION_CONFIG_CHANGED)
-                addAction(Intent.ACTION_USER_UNLOCKED)
-                addAction(Intent.ACTION_SCREEN_ON)
-                addAction(Intent.ACTION_SCREEN_OFF)
-                addAction(Intent.ACTION_USER_PRESENT)
-                addAction(Intent.ACTION_USER_BACKGROUND)
-            }
+            val filter =
+                IntentFilter().apply {
+                    addAction(GestureConfig.ACTION_CONFIG_CHANGED)
+                    addAction(Intent.ACTION_USER_UNLOCKED)
+                    addAction(Intent.ACTION_SCREEN_ON)
+                    addAction(Intent.ACTION_SCREEN_OFF)
+                    addAction(Intent.ACTION_USER_PRESENT)
+                    addAction(Intent.ACTION_USER_BACKGROUND)
+                }
             if (VersionCompat.supportsReceiverExported()) {
                 context.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
             } else {
@@ -432,15 +457,18 @@ class MainHook : IXposedHookLoadPackage {
 
     private fun loadSavedConfig(context: Context) {
         try {
-            val moduleContext = context.createPackageContext(
-                "com.example.myedgegesture",
-                Context.CONTEXT_IGNORE_SECURITY
-            )
-            val devicePrefs = moduleContext.createDeviceProtectedStorageContext()
-                .getSharedPreferences(GestureConfig.PREFS_NAME, Context.MODE_PRIVATE)
-            val normalPrefs = runCatching {
-                moduleContext.getSharedPreferences(GestureConfig.PREFS_NAME, Context.MODE_PRIVATE)
-            }.getOrNull()
+            val moduleContext =
+                context.createPackageContext(
+                    "com.example.myedgegesture",
+                    Context.CONTEXT_IGNORE_SECURITY,
+                )
+            val devicePrefs =
+                moduleContext.createDeviceProtectedStorageContext()
+                    .getSharedPreferences(GestureConfig.PREFS_NAME, Context.MODE_PRIVATE)
+            val normalPrefs =
+                runCatching {
+                    moduleContext.getSharedPreferences(GestureConfig.PREFS_NAME, Context.MODE_PRIVATE)
+                }.getOrNull()
             val prefs = chooseConfigPrefs(devicePrefs, normalPrefs)
             RuntimeGestureConfig.updateFromPreferences(prefs)
             applyLegacyConfigFallback(prefs)
@@ -448,7 +476,7 @@ class MainHook : IXposedHookLoadPackage {
                 "$TAG: saved config loaded enabled=${RuntimeGestureConfig.enabled} " +
                     "updatedAt=${prefs.getLong(GestureConfig.KEY_CONFIG_UPDATED_AT, 0L)} " +
                     "leftUp=${RuntimeGestureConfig.actionFor(EdgeGestureDetector.Edge.LEFT, GESTURE_SWIPE_UP)} " +
-                    "rightUp=${RuntimeGestureConfig.actionFor(EdgeGestureDetector.Edge.RIGHT, GESTURE_SWIPE_UP)}"
+                    "rightUp=${RuntimeGestureConfig.actionFor(EdgeGestureDetector.Edge.RIGHT, GESTURE_SWIPE_UP)}",
             )
         } catch (t: Throwable) {
             XposedBridge.log("$TAG: saved config load skipped: ${t.message}")
@@ -457,7 +485,7 @@ class MainHook : IXposedHookLoadPackage {
 
     private fun chooseConfigPrefs(
         devicePrefs: android.content.SharedPreferences,
-        normalPrefs: android.content.SharedPreferences?
+        normalPrefs: android.content.SharedPreferences?,
     ): android.content.SharedPreferences {
         val deviceHasConfig = devicePrefs.contains(GestureConfig.KEY_ENABLED)
         val normalHasConfig = normalPrefs?.contains(GestureConfig.KEY_ENABLED) == true
@@ -501,7 +529,10 @@ class MainHook : IXposedHookLoadPackage {
         recycleHeldTouchEvents()
     }
 
-    private fun reloadSavedConfigAndApply(context: Context, reason: String) {
+    private fun reloadSavedConfigAndApply(
+        context: Context,
+        reason: String,
+    ) {
         resetInputState()
         loadSavedConfig(context)
         applyRuntimeConfig(context)
@@ -509,7 +540,10 @@ class MainHook : IXposedHookLoadPackage {
         DebugLog.info("runtime refreshed by $reason enabled=${RuntimeGestureConfig.enabled}")
     }
 
-    private fun markRuntimeStatus(context: Context, reason: String) {
+    private fun markRuntimeStatus(
+        context: Context,
+        reason: String,
+    ) {
         if (RuntimeGestureConfig.enabled) {
             DebugLog.markStatus(context, GestureConfig.KEY_STATUS_STARTED_AT, "$reason; ${runtimeSummary()}")
         } else {

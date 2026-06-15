@@ -16,8 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.AccountTree
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.RadioButtonChecked
@@ -53,7 +53,7 @@ import kotlin.math.abs
 
 private data class SettingsPage(
     val title: String,
-    val icon: ImageVector
+    val icon: ImageVector,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,39 +65,43 @@ fun SettingsScreen(
     onExport: (Uri) -> Unit,
     onImport: (Uri) -> Unit,
     hookStatus: HookStatus,
-    onShowGuide: () -> Unit
+    onShowGuide: () -> Unit,
 ) {
-    val pages = remember {
-        listOf(
-            SettingsPage(t("总览", "Overview"), Icons.Rounded.Settings),
-            SettingsPage(t("触发", "Trigger"), Icons.Rounded.TouchApp),
-            SettingsPage(t("指针", "Pointer"), Icons.Rounded.RadioButtonChecked),
-            SettingsPage(t("动作", "Actions"), Icons.Rounded.AccountTree)
-        )
-    }
+    val pages =
+        remember {
+            listOf(
+                SettingsPage(t("总览", "Overview"), Icons.Rounded.Settings),
+                SettingsPage(t("触发", "Trigger"), Icons.Rounded.TouchApp),
+                SettingsPage(t("指针", "Pointer"), Icons.Rounded.RadioButtonChecked),
+                SettingsPage(t("动作", "Actions"), Icons.Rounded.AccountTree),
+            )
+        }
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val coroutineScope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")
-    ) { uri ->
-        uri?.let(onExport)
-    }
-    val importLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        uri?.let(onImport)
-    }
+    val exportLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.CreateDocument("application/json"),
+        ) { uri ->
+            uri?.let(onExport)
+        }
+    val importLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocument(),
+        ) { uri ->
+            uri?.let(onImport)
+        }
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
                 title = { Text("EdgeGesture") },
                 scrollBehavior = scrollBehavior,
-                colors = TopAppBarDefaults.largeTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
-                ),
+                colors =
+                    TopAppBarDefaults.largeTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    ),
                 actions = {
                     IconButton(onClick = onShowGuide) {
                         Icon(Icons.AutoMirrored.Rounded.HelpOutline, contentDescription = t("打开新手指南", "Open guide"))
@@ -111,13 +115,13 @@ fun SettingsScreen(
                     IconButton(onClick = onReset) {
                         Icon(Icons.Rounded.Restore, contentDescription = t("恢复推荐值", "Restore recommended values"))
                     }
-                }
+                },
             )
         },
         bottomBar = {
             NavigationBar(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                tonalElevation = 0.dp
+                tonalElevation = 0.dp,
             ) {
                 pages.forEachIndexed { index, page ->
                     NavigationBarItem(
@@ -127,10 +131,11 @@ fun SettingsScreen(
                                 if (abs(pagerState.currentPage - index) <= 1) {
                                     pagerState.animateScrollToPage(
                                         page = index,
-                                        animationSpec = tween(
-                                            durationMillis = 300,
-                                            easing = FastOutSlowInEasing
-                                        )
+                                        animationSpec =
+                                            tween(
+                                                durationMillis = 300,
+                                                easing = FastOutSlowInEasing,
+                                            ),
                                     )
                                 } else {
                                     pagerState.scrollToPage(index)
@@ -140,72 +145,80 @@ fun SettingsScreen(
                         icon = { Icon(page.icon, contentDescription = null) },
                         label = { Text(page.title) },
                         alwaysShowLabel = true,
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        colors =
+                            NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            ),
                     )
                 }
             }
-        }
+        },
     ) { innerPadding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
         ) {
             Box(Modifier.fillMaxSize()) {
                 HorizontalPager(
                     state = pagerState,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
                 ) { pageIndex ->
                     val pageOffset = (pagerState.currentPage - pageIndex) + pagerState.currentPageOffsetFraction
                     val alpha = 1f - kotlin.math.abs(pageOffset).coerceIn(0f, 1f) * 0.3f
                     val scale = 1f - kotlin.math.abs(pageOffset).coerceIn(0f, 1f) * 0.05f
 
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .alpha(alpha)
-                            .scale(scale)
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .alpha(alpha)
+                                .scale(scale),
                     ) {
-                    when (pageIndex) {
-                        1 -> TriggerPage(
-                            settings = settings,
-                            onSettingsChange = onSettingsChange,
-                            hookStatus = hookStatus,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp, vertical = 12.dp)
-                        )
-                        2 -> PointerPage(
-                            settings = settings,
-                            onSettingsChange = onSettingsChange,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp, vertical = 12.dp)
-                        )
-                        else -> {
-                            LazyColumn(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                                contentPadding = PaddingValues(vertical = 12.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                item {
-                                    when (pageIndex) {
-                                        0 -> OverviewPage(settings, onSettingsChange, hookStatus)
-                                        3 -> ActionPage(settings, onSettingsChange)
+                        when (pageIndex) {
+                            1 ->
+                                TriggerPage(
+                                    settings = settings,
+                                    onSettingsChange = onSettingsChange,
+                                    hookStatus = hookStatus,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxSize()
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                )
+                            2 ->
+                                PointerPage(
+                                    settings = settings,
+                                    onSettingsChange = onSettingsChange,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxSize()
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                )
+                            else -> {
+                                LazyColumn(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxSize()
+                                            .padding(horizontal = 16.dp),
+                                    contentPadding = PaddingValues(vertical = 12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                                ) {
+                                    item {
+                                        when (pageIndex) {
+                                            0 -> OverviewPage(settings, onSettingsChange, hookStatus)
+                                            3 -> ActionPage(settings, onSettingsChange)
+                                        }
                                     }
+                                    item { Spacer(Modifier.height(16.dp)) }
                                 }
-                                item { Spacer(Modifier.height(16.dp)) }
                             }
                         }
-                    }
                     }
                 }
                 if (pagerState.currentPage == 1) {

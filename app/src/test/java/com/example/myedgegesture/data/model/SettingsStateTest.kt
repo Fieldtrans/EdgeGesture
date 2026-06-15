@@ -1,10 +1,11 @@
 package com.example.myedgegesture.data.model
 
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
-import org.junit.Assert.*
 
 class SettingsStateTest {
-
     @Test
     fun `default state has correct values`() {
         val state = SettingsState.default()
@@ -25,11 +26,12 @@ class SettingsStateTest {
 
     @Test
     fun `fromJsonString roundtrip preserves values`() {
-        val original = SettingsState.default().copy(
-            enabled = true,
-            pointerSensitivity = 150,
-            hapticFeedbackEnabled = false
-        )
+        val original =
+            SettingsState.default().copy(
+                enabled = true,
+                pointerSensitivity = 150,
+                hapticFeedbackEnabled = false,
+            )
         val json = original.toJsonString()
         val restored = SettingsState.fromJsonString(json)
         assertEquals(original.enabled, restored.enabled)

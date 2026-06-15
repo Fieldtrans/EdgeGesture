@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.1 - 2026-06-15
+
+- Removed the support/donation entry and QR code from the app.
+- Enabled Material You dynamic color on Android 12 and newer.
+- Reduced the adaptive app icon foreground size.
+- Refined the overview status card to use Material 3 color roles.
+- Formatted the Kotlin project with ktlint and added Compose-aware ktlint naming configuration.
+
 ## 1.1.1 - 2026-05-31
 
 - Added boot/unlock/user-present config rebroadcasting so the LSPosed enhanced engine can recover its saved configuration after reboot.
@@ -17,7 +25,6 @@
 - Added notification shade trigger mode switching: pull down when the pointer touches the status bar, or pull down only after releasing on the status bar.
 - Added clearer Standard vs LSPosed trigger previews and LSPosed-style edge preview when the enhanced module is detected.
 - Added automatic setting persistence; changes are saved and broadcast immediately without a separate save button.
-- Added a voluntary support/donation entry on the overview page.
 - Added a first-run quick-start guide and a reusable guide entry on the overview page.
 - Refined the settings UI with bottom navigation, bilingual text, GitHub link, and clearer trigger/action pages.
 - Kept the LSPosed enhanced path on InputFilter/system_server monitoring for lower conflict with normal touches.

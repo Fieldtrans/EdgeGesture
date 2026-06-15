@@ -15,7 +15,7 @@ fun DrawScope.drawArrow(
     end: Offset,
     arrowSize: Float,
     color: Color,
-    stroke: Stroke
+    stroke: Stroke,
 ) {
     val dx = end.x - start.x
     val dy = end.y - start.y

@@ -6,13 +6,14 @@ import android.view.WindowManager
 import kotlin.math.abs
 
 class EdgeGestureDetector(
-    private val callbacks: Callbacks
+    private val callbacks: Callbacks,
 ) {
     // Cached screen metrics to avoid repeated WindowManager calls
     private var cachedScreenWidth: Float = 0f
     private var cachedScreenHeight: Float = 0f
     private var cachedDensity: Float = 0f
     private var lastConfigurationHash: Int = 0
+
     interface Callbacks {
         fun onGesture(
             context: Context,
@@ -22,12 +23,15 @@ class EdgeGestureDetector(
             startX: Float,
             startY: Float,
             x: Float,
-            y: Float
+            y: Float,
         )
     }
 
     enum class Edge {
-        LEFT, RIGHT, TOP, BOTTOM
+        LEFT,
+        RIGHT,
+        TOP,
+        BOTTOM,
     }
 
     enum class Decision {
@@ -35,7 +39,7 @@ class EdgeGestureDetector(
         HOLD,
         CONSUME,
         REPLAY_HELD_THEN_FORWARD,
-        DROP_HELD_AND_CONSUME
+        DROP_HELD_AND_CONSUME,
     }
 
     private data class Session(
@@ -47,7 +51,7 @@ class EdgeGestureDetector(
         val createdAt: Long,
         var claimed: Boolean = false,
         var yielded: Boolean = false,
-        var actionDispatched: Boolean = false
+        var actionDispatched: Boolean = false,
     )
 
     private data class PendingDoubleTap(
@@ -57,13 +61,16 @@ class EdgeGestureDetector(
         val downY: Float,
         val x: Float,
         val y: Float,
-        val eventTime: Long
+        val eventTime: Long,
     )
 
     private var session: Session? = null
     private var pendingDoubleTap: PendingDoubleTap? = null
 
-    fun handle(context: Context, event: MotionEvent): Decision {
+    fun handle(
+        context: Context,
+        event: MotionEvent,
+    ): Decision {
         return when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> handleDown(context, event)
             MotionEvent.ACTION_POINTER_DOWN -> {
@@ -82,7 +89,10 @@ class EdgeGestureDetector(
         pendingDoubleTap = null
     }
 
-    private fun handleDown(context: Context, event: MotionEvent): Decision {
+    private fun handleDown(
+        context: Context,
+        event: MotionEvent,
+    ): Decision {
         if (!RuntimeGestureConfig.enabled) {
             session = null
             return Decision.FORWARD
@@ -109,20 +119,24 @@ class EdgeGestureDetector(
             return Decision.FORWARD
         }
 
-        session = Session(
-            edge = edge,
-            zone = resolveZone(bounds.first, bounds.second, edge, event.rawX, event.rawY),
-            downX = event.rawX,
-            downY = event.rawY,
-            thresholdPx = RuntimeGestureConfig.swipeDistanceDp * density,
-            createdAt = event.eventTime
-        )
+        session =
+            Session(
+                edge = edge,
+                zone = resolveZone(bounds.first, bounds.second, edge, event.rawX, event.rawY),
+                downX = event.rawX,
+                downY = event.rawY,
+                thresholdPx = RuntimeGestureConfig.swipeDistanceDp * density,
+                createdAt = event.eventTime,
+            )
 
         DebugLog.info("hold down edge=$edge x=${event.rawX} y=${event.rawY}")
         return Decision.HOLD
     }
 
-    private fun handleMove(context: Context, event: MotionEvent): Decision {
+    private fun handleMove(
+        context: Context,
+        event: MotionEvent,
+    ): Decision {
         val current = session ?: return Decision.FORWARD
         if (current.claimed) return Decision.CONSUME
         if (current.yielded) return Decision.FORWARD
@@ -154,7 +168,7 @@ class EdgeGestureDetector(
                     startX = current.downX,
                     startY = current.downY,
                     x = event.rawX,
-                    y = event.rawY
+                    y = event.rawY,
                 )
             } else {
                 DebugLog.info("defer swipe action until touch up edge=${current.edge}")
@@ -171,7 +185,10 @@ class EdgeGestureDetector(
         return Decision.HOLD
     }
 
-    private fun handleUp(context: Context, event: MotionEvent): Decision {
+    private fun handleUp(
+        context: Context,
+        event: MotionEvent,
+    ): Decision {
         val current = session ?: return Decision.FORWARD
         session = null
         if (current.claimed && !current.actionDispatched) {
@@ -183,7 +200,7 @@ class EdgeGestureDetector(
                 startX = current.downX,
                 startY = current.downY,
                 x = event.rawX,
-                y = event.rawY
+                y = event.rawY,
             )
         }
         if (current.claimed) return Decision.CONSUME
@@ -206,7 +223,7 @@ class EdgeGestureDetector(
         event: MotionEvent,
         dx: Float,
         dy: Float,
-        density: Float
+        density: Float,
     ): Boolean {
         val holdTime = event.eventTime - current.createdAt
         if (isPossibleSwipeUp(dx, dy, density) && holdTime < MAX_UP_HOLD_MS) {
@@ -216,7 +233,13 @@ class EdgeGestureDetector(
         return holdTime >= MAX_HOLD_MS
     }
 
-    private fun resolveEdge(width: Float, height: Float, edgeWidth: Float, x: Float, y: Float): Edge? {
+    private fun resolveEdge(
+        width: Float,
+        height: Float,
+        edgeWidth: Float,
+        x: Float,
+        y: Float,
+    ): Edge? {
         return when {
             x <= edgeWidth -> Edge.LEFT
             x >= width - edgeWidth -> Edge.RIGHT
@@ -226,16 +249,27 @@ class EdgeGestureDetector(
         }
     }
 
-    private fun resolveZone(width: Float, height: Float, edge: Edge, x: Float, y: Float): String {
+    private fun resolveZone(
+        width: Float,
+        height: Float,
+        edge: Edge,
+        x: Float,
+        y: Float,
+    ): String {
         return when (edge) {
             Edge.LEFT,
-            Edge.RIGHT -> verticalZone(y, height)
+            Edge.RIGHT,
+            -> verticalZone(y, height)
             Edge.TOP,
-            Edge.BOTTOM -> horizontalZone(x, width)
+            Edge.BOTTOM,
+            -> horizontalZone(x, width)
         }
     }
 
-    private fun verticalZone(y: Float, height: Float): String {
+    private fun verticalZone(
+        y: Float,
+        height: Float,
+    ): String {
         return when {
             y < height * 0.33f -> "top"
             y < height * 0.66f -> "mid"
@@ -243,7 +277,10 @@ class EdgeGestureDetector(
         }
     }
 
-    private fun horizontalZone(x: Float, width: Float): String {
+    private fun horizontalZone(
+        x: Float,
+        width: Float,
+    ): String {
         return when {
             x < width * 0.33f -> "left"
             x < width * 0.66f -> "mid"
@@ -262,13 +299,13 @@ class EdgeGestureDetector(
     private fun shouldDispatchImmediately(edge: Edge): Boolean {
         val action = RuntimeGestureConfig.actionFor(edge, "swipe_up")
         return action == GestureConfig.ACTION_ONE_HAND_TAP ||
-                action == GestureConfig.ACTION_NOTIFICATIONS
+            action == GestureConfig.ACTION_NOTIFICATIONS
     }
 
     private fun handleDoubleTapRecents(
         context: Context,
         current: Session,
-        event: MotionEvent
+        event: MotionEvent,
     ): Boolean {
         if (!hasDoubleTapRecentsForEdge(current.edge)) {
             clearExpiredDoubleTap(event.eventTime)
@@ -295,20 +332,21 @@ class EdgeGestureDetector(
                 startX = pending.downX,
                 startY = pending.downY,
                 x = event.rawX,
-                y = event.rawY
+                y = event.rawY,
             )
             DebugLog.info("double tap recents edge=${current.edge}")
             return true
         } else {
-            pendingDoubleTap = PendingDoubleTap(
-                edge = current.edge,
-                zone = current.zone,
-                downX = current.downX,
-                downY = current.downY,
-                x = event.rawX,
-                y = event.rawY,
-                eventTime = event.eventTime
-            )
+            pendingDoubleTap =
+                PendingDoubleTap(
+                    edge = current.edge,
+                    zone = current.zone,
+                    downX = current.downX,
+                    downY = current.downY,
+                    x = event.rawX,
+                    y = event.rawY,
+                    eventTime = event.eventTime,
+                )
             DebugLog.info("double tap pending edge=${current.edge}; first tap passed through")
             return false
         }
@@ -318,7 +356,7 @@ class EdgeGestureDetector(
         context: Context,
         pending: PendingDoubleTap,
         current: Session,
-        event: MotionEvent
+        event: MotionEvent,
     ): Boolean {
         if (pending.edge != current.edge || pending.zone != current.zone) return false
         if (event.eventTime - pending.eventTime > doubleTapTimeoutMs()) return false
@@ -339,34 +377,49 @@ class EdgeGestureDetector(
     private fun doubleTapTimeoutMs(): Long {
         return RuntimeGestureConfig.doubleTapTimeoutMs.coerceIn(
             MIN_DOUBLE_TAP_TIMEOUT_MS,
-            MAX_DOUBLE_TAP_TIMEOUT_MS
+            MAX_DOUBLE_TAP_TIMEOUT_MS,
         ).toLong()
     }
 
-    private fun isInsideTriggerRegion(width: Float, height: Float, edge: Edge, x: Float, y: Float): Boolean {
+    private fun isInsideTriggerRegion(
+        width: Float,
+        height: Float,
+        edge: Edge,
+        x: Float,
+        y: Float,
+    ): Boolean {
         val startPercent = RuntimeGestureConfig.triggerRegionStartPercent.coerceIn(0, 100)
         val endPercent = RuntimeGestureConfig.triggerRegionEndPercent.coerceIn(0, 100)
         val start = minOf(startPercent, endPercent) / 100f
         val end = maxOf(startPercent, endPercent) / 100f
 
-        val position = when (edge) {
-            Edge.LEFT,
-            Edge.RIGHT -> y / height
-            Edge.TOP,
-            Edge.BOTTOM -> x / width
-        }
+        val position =
+            when (edge) {
+                Edge.LEFT,
+                Edge.RIGHT,
+                -> y / height
+                Edge.TOP,
+                Edge.BOTTOM,
+                -> x / width
+            }
 
         return position in start..end
     }
 
-    private fun isNativeBackIntent(edge: Edge, dx: Float, dy: Float, density: Float): Boolean {
+    private fun isNativeBackIntent(
+        edge: Edge,
+        dx: Float,
+        dy: Float,
+        density: Float,
+    ): Boolean {
         if (edge != Edge.LEFT && edge != Edge.RIGHT) return false
 
-        val inward = when (edge) {
-            Edge.LEFT -> dx > 0f
-            Edge.RIGHT -> dx < 0f
-            else -> false
-        }
+        val inward =
+            when (edge) {
+                Edge.LEFT -> dx > 0f
+                Edge.RIGHT -> dx < 0f
+                else -> false
+            }
         if (!inward) return false
 
         val horizontal = abs(dx)
@@ -376,12 +429,21 @@ class EdgeGestureDetector(
         return horizontal >= slop && horizontal > vertical * 0.55f
     }
 
-    private fun isClearlyHorizontalFromSideEdge(edge: Edge, dx: Float, dy: Float, density: Float): Boolean {
+    private fun isClearlyHorizontalFromSideEdge(
+        edge: Edge,
+        dx: Float,
+        dy: Float,
+        density: Float,
+    ): Boolean {
         if (edge != Edge.LEFT && edge != Edge.RIGHT) return false
         return abs(dx) >= HORIZONTAL_YIELD_DISTANCE_DP * density && abs(dx) > abs(dy) * 0.75f
     }
 
-    private fun isConfirmedSwipeUp(dx: Float, dy: Float, thresholdPx: Float): Boolean {
+    private fun isConfirmedSwipeUp(
+        dx: Float,
+        dy: Float,
+        thresholdPx: Float,
+    ): Boolean {
         if (dy >= 0f) return false
         val vertical = abs(dy)
         val horizontal = abs(dx)
@@ -390,7 +452,11 @@ class EdgeGestureDetector(
         return vertical >= thresholdPx && vertical > horizontal * verticalRatio
     }
 
-    private fun isPossibleSwipeUp(dx: Float, dy: Float, density: Float): Boolean {
+    private fun isPossibleSwipeUp(
+        dx: Float,
+        dy: Float,
+        density: Float,
+    ): Boolean {
         if (dy >= 0f) return false
         val vertical = abs(dy)
         val horizontal = abs(dx)

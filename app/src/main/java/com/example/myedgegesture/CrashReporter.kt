@@ -16,7 +16,6 @@ import java.util.Locale
  * Usage: Call CrashReporter.install(context) in Application.onCreate or MainActivity.onCreate
  */
 object CrashReporter {
-
     private const val LOG_FILE_NAME = "crash_log.txt"
     private const val MAX_LOG_SIZE = 256 * 1024 // 256KB max
 
@@ -57,7 +56,11 @@ object CrashReporter {
         }
     }
 
-    private fun saveCrashLog(context: Context, thread: Thread, throwable: Throwable) {
+    private fun saveCrashLog(
+        context: Context,
+        thread: Thread,
+        throwable: Throwable,
+    ) {
         val file = getLogFile(context)
 
         // Truncate if too large
@@ -68,21 +71,22 @@ object CrashReporter {
         val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
         val stackTrace = StringWriter().also { throwable.printStackTrace(PrintWriter(it)) }.toString()
 
-        val report = buildString {
-            appendLine("=== CRASH REPORT ===")
-            appendLine("Time: $timestamp")
-            appendLine("Thread: ${thread.name}")
-            appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL}")
-            appendLine("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
-            appendLine("App Version: ${getAppVersion(context)}")
-            appendLine()
-            appendLine("Exception: ${throwable.javaClass.name}")
-            appendLine("Message: ${throwable.message}")
-            appendLine()
-            appendLine("Stack Trace:")
-            appendLine(stackTrace)
-            appendLine()
-        }
+        val report =
+            buildString {
+                appendLine("=== CRASH REPORT ===")
+                appendLine("Time: $timestamp")
+                appendLine("Thread: ${thread.name}")
+                appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL}")
+                appendLine("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+                appendLine("App Version: ${getAppVersion(context)}")
+                appendLine()
+                appendLine("Exception: ${throwable.javaClass.name}")
+                appendLine("Message: ${throwable.message}")
+                appendLine()
+                appendLine("Stack Trace:")
+                appendLine(stackTrace)
+                appendLine()
+            }
 
         file.appendText(report)
     }
