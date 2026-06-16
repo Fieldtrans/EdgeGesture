@@ -3,6 +3,7 @@
 [![Release](https://img.shields.io/badge/release-v1.3.1-555555)](https://github.com/Fieldtrans/EdgeGesture/releases/latest)
 [![Android CI](https://github.com/Fieldtrans/EdgeGesture/actions/workflows/android.yml/badge.svg)](https://github.com/Fieldtrans/EdgeGesture/actions/workflows/android.yml)
 [![Download APK](https://img.shields.io/badge/download-APK-555555)](https://github.com/Fieldtrans/EdgeGesture/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Fieldtrans/EdgeGesture/total?label=downloads)](https://github.com/Fieldtrans/EdgeGesture/releases)
 [![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white)](https://developer.android.com/)
 [![LSPosed](https://img.shields.io/badge/LSPosed-module-6f42c1)](https://github.com/LSPosed/LSPosed)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
