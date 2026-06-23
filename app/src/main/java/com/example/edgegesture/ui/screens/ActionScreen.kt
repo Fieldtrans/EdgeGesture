@@ -77,9 +77,9 @@ fun ActionPage(
             Text(
                 text =
                     t(
-                        "预动画保持不变。选择碰到顶部立刻下拉，或松手点击顶部后再下拉。",
-                        "The preview animation stays unchanged. Choose instant pull-down on top touch, or " +
-                            "pull down after releasing on the status bar.",
+                        "预动画会跟随手势进度，到顶部时吸附为完成态。选择碰到顶部立刻下拉，或松手点击顶部后再下拉。",
+                        "The preview follows gesture progress and snaps ready at the top. Choose instant pull-down " +
+                            "on top touch, or pull down after releasing on the status bar.",
                     ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

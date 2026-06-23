@@ -12,6 +12,7 @@ import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.PorterDuff
 import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.Shader
 import android.hardware.input.InputManager
 import android.os.Handler
@@ -703,13 +704,19 @@ object OneHandPointer {
         if (current.pointerY > current.notificationPreviewHeight) return 0f
 
         val previewSpan = (current.notificationPreviewHeight - current.notificationHotspotHeight).coerceAtLeast(1f)
-        val progress =
+        val rawProgress =
             if (current.pointerY <= current.notificationHotspotHeight) {
                 1f
             } else {
                 1f - ((current.pointerY - current.notificationHotspotHeight) / previewSpan)
             }
-        return progress.coerceIn(NOTIFICATION_PREVIEW_MIN_PROGRESS, 1f)
+        val progress =
+            if (rawProgress >= NOTIFICATION_READY_PROGRESS) {
+                1f
+            } else {
+                rawProgress
+            }
+        return progress.coerceIn(0f, 1f)
     }
 
     private fun expandNotificationShade(context: Context): Boolean {
@@ -1142,6 +1149,7 @@ object OneHandPointer {
             private var pointerY = 0f
             private var style = GestureConfig.POINTER_STYLE_LINE_ARROW
             private var notificationPreviewProgress = 0f
+            private var notificationPreviewReady = false
             private var visualStartX = 0f
             private var visualStartY = 0f
             private var hasDirtyBounds = false
@@ -1184,6 +1192,22 @@ object OneHandPointer {
                 Paint(Paint.ANTI_ALIAS_FLAG).apply {
                     style = Paint.Style.FILL
                 }
+            private val notificationPanelPaint =
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.FILL
+                }
+            private val notificationHandlePaint =
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.FILL
+                }
+            private val notificationIconPaint =
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeCap = Paint.Cap.ROUND
+                    strokeJoin = Paint.Join.ROUND
+                }
+            private val notificationPanelRect = RectF()
+            private val notificationHandleRect = RectF()
             private val notificationArrowPath = Path()
 
             fun update(
@@ -1245,6 +1269,7 @@ object OneHandPointer {
                 this.touchArea = touchArea
                 this.style = style
                 this.notificationPreviewProgress = newNotificationPreviewProgress
+                this.notificationPreviewReady = newNotificationPreviewProgress >= NOTIFICATION_READY_PROGRESS
                 linePaint.strokeWidth = lineWidth
                 linePaint.color = color
                 cursorPaint.color = color
@@ -1331,30 +1356,112 @@ object OneHandPointer {
                 val viewWidth = drawingWidth().toFloat()
                 val cx = viewWidth / 2f
                 val progress = notificationPreviewProgress.coerceIn(0f, 1f)
+                val eased = materialEmphasizedProgress(progress)
                 val top = notificationPreviewSafeTop()
-                val arrowHeight = dp(20f) + dp(12f) * progress
-                val arrowWidth = dp(18f) + dp(10f) * progress
-                val shaftWidth = dp(4f) + dp(2f) * progress
-                val shaftBottom = top + arrowHeight * 0.56f
-                val tipY = top + arrowHeight
+                val statusHeight = androidStatusBarHeight()
+                val panelHeight = dp(6f) + dp(42f) * eased
+                val panelBottom = top + statusHeight + panelHeight
+                val baseRed = Color.red(linePaint.color)
+                val baseGreen = Color.green(linePaint.color)
+                val baseBlue = Color.blue(linePaint.color)
+                val panelAlpha =
+                    ((38 + 132 * eased) + if (notificationPreviewReady) 36 else 0)
+                        .toInt()
+                        .coerceIn(0, 206)
+                val accentAlpha =
+                    ((78 + 126 * eased) + if (notificationPreviewReady) 42 else 0)
+                        .toInt()
+                        .coerceIn(0, 236)
+
+                notificationPanelRect.set(0f, top, viewWidth, panelBottom)
+                notificationPanelPaint.shader =
+                    LinearGradient(
+                        cx,
+                        top,
+                        cx,
+                        panelBottom,
+                        Color.argb(panelAlpha, baseRed, baseGreen, baseBlue),
+                        Color.argb((panelAlpha * 0.42f).toInt(), baseRed, baseGreen, baseBlue),
+                        Shader.TileMode.CLAMP,
+                    )
+                canvas.drawRoundRect(
+                    notificationPanelRect,
+                    dp(18f),
+                    dp(18f),
+                    notificationPanelPaint,
+                )
+                notificationPanelPaint.shader = null
+
+                val handleWidth = dp(34f) + dp(38f) * eased
+                val handleHeight = dp(3f) + dp(2f) * eased
+                val handleY = panelBottom - dp(9f)
+                notificationHandleRect.set(
+                    cx - handleWidth / 2f,
+                    handleY,
+                    cx + handleWidth / 2f,
+                    handleY + handleHeight,
+                )
+                notificationHandlePaint.color = Color.argb(accentAlpha, baseRed, baseGreen, baseBlue)
+                canvas.drawRoundRect(
+                    notificationHandleRect,
+                    handleHeight,
+                    handleHeight,
+                    notificationHandlePaint,
+                )
+
+                val iconCenterY = top + statusHeight + dp(10f) + dp(11f) * eased
+                val bellRadius = dp(5.5f) + dp(1.8f) * eased
+                val iconShift = dp(5f) * (1f - eased)
+                notificationIconPaint.color = Color.argb(accentAlpha, baseRed, baseGreen, baseBlue)
+                notificationIconPaint.strokeWidth = dp(if (notificationPreviewReady) 2.3f else 1.9f)
+                canvas.drawArc(
+                    cx - bellRadius,
+                    iconCenterY - bellRadius - iconShift,
+                    cx + bellRadius,
+                    iconCenterY + bellRadius - iconShift,
+                    202f,
+                    136f,
+                    false,
+                    notificationIconPaint,
+                )
+                canvas.drawLine(
+                    cx - bellRadius * 0.78f,
+                    iconCenterY + bellRadius * 0.48f - iconShift,
+                    cx + bellRadius * 0.78f,
+                    iconCenterY + bellRadius * 0.48f - iconShift,
+                    notificationIconPaint,
+                )
+                canvas.drawCircle(
+                    cx,
+                    iconCenterY + bellRadius * 0.78f - iconShift,
+                    dp(1.4f + 0.7f * eased),
+                    notificationHandlePaint,
+                )
+
+                val arrowTop = panelBottom + dp(2f)
+                val arrowHeight = dp(8f) + dp(8f) * eased
+                val arrowWidth = dp(17f) + dp(7f) * eased
+                val shaftWidth = dp(3f) + dp(1.5f) * eased
+                val shaftBottom = arrowTop + arrowHeight * 0.48f
+                val tipY = arrowTop + arrowHeight
                 val startColor =
                     Color.argb(
-                        (28 + 72 * progress).toInt().coerceIn(0, 100),
-                        Color.red(linePaint.color),
-                        Color.green(linePaint.color),
-                        Color.blue(linePaint.color),
+                        (34 + 62 * eased).toInt().coerceIn(0, 96),
+                        baseRed,
+                        baseGreen,
+                        baseBlue,
                     )
                 val endColor =
                     Color.argb(
-                        (95 + 105 * progress).toInt().coerceIn(0, 200),
-                        Color.red(linePaint.color),
-                        Color.green(linePaint.color),
-                        Color.blue(linePaint.color),
+                        accentAlpha,
+                        baseRed,
+                        baseGreen,
+                        baseBlue,
                     )
 
                 notificationArrowPath.reset()
-                notificationArrowPath.moveTo(cx - shaftWidth / 2f, top)
-                notificationArrowPath.lineTo(cx + shaftWidth / 2f, top)
+                notificationArrowPath.moveTo(cx - shaftWidth / 2f, arrowTop)
+                notificationArrowPath.lineTo(cx + shaftWidth / 2f, arrowTop)
                 notificationArrowPath.lineTo(cx + shaftWidth / 2f, shaftBottom)
                 notificationArrowPath.lineTo(cx + arrowWidth / 2f, shaftBottom)
                 notificationArrowPath.lineTo(cx, tipY)
@@ -1365,7 +1472,7 @@ object OneHandPointer {
                 notificationArrowPaint.shader =
                     LinearGradient(
                         cx,
-                        top,
+                        arrowTop,
                         cx,
                         tipY,
                         startColor,
@@ -1374,6 +1481,11 @@ object OneHandPointer {
                     )
                 canvas.drawPath(notificationArrowPath, notificationArrowPaint)
                 notificationArrowPaint.shader = null
+            }
+
+            private fun materialEmphasizedProgress(progress: Float): Float {
+                val x = progress.coerceIn(0f, 1f)
+                return x * x * (3f - 2f * x)
             }
 
             private fun notificationPreviewSafeTop(): Float {
@@ -1526,7 +1638,7 @@ object OneHandPointer {
                 }
 
                 if (notificationPreviewProgress > 0f) {
-                    val previewHeight = notificationPreviewSafeTop() + dp(46f)
+                    val previewHeight = notificationPreviewSafeTop() + androidStatusBarHeight() + dp(76f)
                     left = minOf(left, 0f)
                     top = minOf(top, 0f)
                     right = maxOf(right, viewWidth.toFloat())
@@ -1699,6 +1811,6 @@ object OneHandPointer {
     private const val NOTIFICATION_HOTSPOT_MIN_DP = 4f
     private const val NOTIFICATION_HOTSPOT_MAX_DP = 12f
     private const val NOTIFICATION_PREVIEW_HEIGHT_MULTIPLIER = 8.0f
-    private const val NOTIFICATION_PREVIEW_MIN_PROGRESS = 0.12f
+    private const val NOTIFICATION_READY_PROGRESS = 0.88f
     private const val FRAME_FALLBACK_DELAY_MS = 8L
 }
