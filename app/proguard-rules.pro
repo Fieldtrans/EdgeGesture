@@ -6,30 +6,30 @@
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
 # 保留 Xposed 相关
--keep class com.example.myedgegesture.MainHook { *; }
--keep class com.example.myedgegesture.MainHook$* { *; }
--keep class com.example.myedgegesture.GestureConfig { *; }
--keep class com.example.myedgegesture.RuntimeGestureConfig { *; }
--keep class com.example.myedgegesture.OneHandPointer { *; }
--keep class com.example.myedgegesture.OneHandPointer$* { *; }
--keep class com.example.myedgegesture.GestureActionDispatcher { *; }
--keep class com.example.myedgegesture.EdgeGestureDetector { *; }
--keep class com.example.myedgegesture.EdgeGestureDetector$* { *; }
--keep class com.example.myedgegesture.DeviceState { *; }
--keep class com.example.myedgegesture.DebugLog { *; }
--keep class com.example.myedgegesture.HookHealth { *; }
--keep class com.example.myedgegesture.InputInjectionGuard { *; }
--keep class com.example.myedgegesture.SavedConfigBroadcaster { *; }
--keep class com.example.myedgegesture.ConfigBootReceiver { *; }
--keep class com.example.myedgegesture.AccessibilityPointerController { *; }
--keep class com.example.myedgegesture.EdgeAccessibilityService { *; }
--keep class com.example.myedgegesture.AccessibilityActionDispatcher { *; }
+-keep class com.example.edgegesture.MainHook { *; }
+-keep class com.example.edgegesture.MainHook$* { *; }
+-keep class com.example.edgegesture.GestureConfig { *; }
+-keep class com.example.edgegesture.RuntimeGestureConfig { *; }
+-keep class com.example.edgegesture.OneHandPointer { *; }
+-keep class com.example.edgegesture.OneHandPointer$* { *; }
+-keep class com.example.edgegesture.GestureActionDispatcher { *; }
+-keep class com.example.edgegesture.EdgeGestureDetector { *; }
+-keep class com.example.edgegesture.EdgeGestureDetector$* { *; }
+-keep class com.example.edgegesture.DeviceState { *; }
+-keep class com.example.edgegesture.DebugLog { *; }
+-keep class com.example.edgegesture.HookHealth { *; }
+-keep class com.example.edgegesture.InputInjectionGuard { *; }
+-keep class com.example.edgegesture.SavedConfigBroadcaster { *; }
+-keep class com.example.edgegesture.ConfigBootReceiver { *; }
+-keep class com.example.edgegesture.AccessibilityPointerController { *; }
+-keep class com.example.edgegesture.EdgeAccessibilityService { *; }
+-keep class com.example.edgegesture.AccessibilityActionDispatcher { *; }
 
 # 保留枚举
 -keepclassmembers enum * { *; }
 
 # 保留 JSON 序列化字段
--keepclassmembers class com.example.myedgegesture.data.model.SettingsState { *; }
+-keepclassmembers class com.example.edgegesture.data.model.SettingsState { *; }
 
 # 保留反射调用的方法
 -keepclassmembers class * {

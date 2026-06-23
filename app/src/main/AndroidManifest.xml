@@ -18,7 +18,7 @@
             android:value="true" />
         <meta-data
             android:name="xposeddescription"
-            android:value="My edge gesture module" />
+            android:value="One-handed edge gestures for taps and system actions with Accessibility and LSPosed enhanced modes." />
         <meta-data
             android:name="xposedminversion"
             android:value="82" />

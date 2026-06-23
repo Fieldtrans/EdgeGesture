@@ -6,4 +6,4 @@
     android:canRetrieveWindowContent="false"
     android:description="@string/accessibility_service_description"
     android:notificationTimeout="50"
-    android:settingsActivity="com.example.myedgegesture.MainActivity" />
+    android:settingsActivity="com.example.edgegesture.MainActivity" />

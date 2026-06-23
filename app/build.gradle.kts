@@ -34,11 +34,11 @@ val hasReleaseSigning =
         signingProperty("EDGEGESTURE_KEY_PASSWORD") != null
 
 android {
-    namespace = "com.example.myedgegesture"
+    namespace = "com.example.edgegesture"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.myedgegesture"
+        applicationId = "com.example.edgegesture"
         minSdk = 26 // Android 8.0 - 支持更多设备
         targetSdk = 35
         versionCode = 16
