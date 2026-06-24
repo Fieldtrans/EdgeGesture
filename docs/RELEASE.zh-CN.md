@@ -5,8 +5,8 @@
 在 `app/build.gradle.kts` 中更新：
 
 ```kotlin
-versionCode = 12
-versionName = "1.1.0"
+versionCode = 17
+versionName = "1.3.2"
 ```
 
 同时更新：
@@ -45,13 +45,13 @@ EDGEGESTURE_KEY_PASSWORD=你的密码
 输出位置：
 
 ```text
-app/build/outputs/apk/release/EdgeGesture-v1.3.1.apk
+app/build/outputs/apk/release/EdgeGesture-v1.3.2.apk
 ```
 
 ## 4. 验证签名
 
 ```bash
-apksigner verify --print-certs app/build/outputs/apk/release/EdgeGesture-v1.3.1.apk
+apksigner verify --print-certs app/build/outputs/apk/release/EdgeGesture-v1.3.2.apk
 ```
 
 如果显示的是 `CN=EdgeGesture`，说明使用了正式签名。
@@ -60,8 +60,8 @@ apksigner verify --print-certs app/build/outputs/apk/release/EdgeGesture-v1.3.1.
 
 ```bash
 git add .
-git commit -m "Release EdgeGesture 1.1.0"
-git tag -a v1.1.0 -m "EdgeGesture 1.1.0"
+git commit -m "Release EdgeGesture 1.3.2"
+git tag -a v1.3.2 -m "EdgeGesture 1.3.2"
 git push origin main --tags
 ```
 

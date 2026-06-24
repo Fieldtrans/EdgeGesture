@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.2 - 2026-06-24
+
+- Refined the Material 3 settings layout, especially the overview and trigger pages.
+- Added the new image-only homepage demo GIF and updated the README preview.
+- Improved Tracker + Cursor startup positioning so the cursor starts near the control source instead of jumping to a screen edge.
+- Added finer 1dp control for the top notification hotspot height and pointer tap contact area.
+- Added configurable top notification hotspot start/end percentages and aligned the runtime preview with the actual trigger area.
+- Improved reboot recovery by syncing saved configuration into device-protected storage.
+
 ## 1.3.1 - 2026-06-15
 
 - Removed the support/donation entry and QR code from the app.

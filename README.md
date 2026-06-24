@@ -1,6 +1,6 @@
 # EdgeGesture
 
-[![Release](https://img.shields.io/badge/release-v1.3.1-555555)](https://github.com/Fieldtrans/EdgeGesture/releases/latest)
+[![Release](https://img.shields.io/badge/release-v1.3.2-555555)](https://github.com/Fieldtrans/EdgeGesture/releases/latest)
 [![Android CI](https://github.com/Fieldtrans/EdgeGesture/actions/workflows/android.yml/badge.svg)](https://github.com/Fieldtrans/EdgeGesture/actions/workflows/android.yml)
 [![Download APK](https://img.shields.io/badge/download-APK-555555)](https://github.com/Fieldtrans/EdgeGesture/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/Fieldtrans/EdgeGesture/total?label=downloads)](https://github.com/Fieldtrans/EdgeGesture/releases)
@@ -73,14 +73,14 @@ EdgeGesture 是一个单手边缘手势工具，用来解决大屏手机单手�
 Release APK 输出位置：
 
 ```text
-app/build/outputs/apk/release/EdgeGesture-v1.3.1.apk
+app/build/outputs/apk/release/EdgeGesture-v1.3.2.apk
 ```
 
 开发者请参考 [文档目录](docs/README.md)。
 
 ## 当前状态
 
-当前版本：`1.3.1`。
+当前版本：`1.3.2`。
 
 详见 [更新日志](CHANGELOG.md) 和 [文档目录](docs/README.md)。
 
@@ -146,12 +146,12 @@ Swipe up to show a tracker ball and cursor. Move the tracker in a joystick-like 
 Release APK output:
 
 ```text
-app/build/outputs/apk/release/EdgeGesture-v1.3.1.apk
+app/build/outputs/apk/release/EdgeGesture-v1.3.2.apk
 ```
 
 ## Status
 
-Current version: `1.3.1`.
+Current version: `1.3.2`.
 
 This module hooks input handling inside `system_server`. Use it carefully and keep a working recovery path before testing custom builds.
 
