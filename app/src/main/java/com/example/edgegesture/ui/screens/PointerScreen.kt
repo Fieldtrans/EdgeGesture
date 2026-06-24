@@ -38,6 +38,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.edgegesture.GestureConfig
 import com.example.edgegesture.data.model.SettingsState
@@ -56,6 +57,7 @@ private enum class PointerSubPage {
 fun PointerPage(
     settings: SettingsState,
     onSettingsChange: (SettingsState) -> Unit,
+    bottomSpacing: Dp = 24.dp,
     modifier: Modifier = Modifier,
 ) {
     var subPage by remember {
@@ -90,7 +92,7 @@ fun PointerPage(
                 Modifier
                     .fillMaxWidth()
                     .weight(1f),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(bottom = bottomSpacing),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             item {
@@ -173,9 +175,9 @@ private fun LinePointerPage(
         SettingSlider(
             title = t("点击区域", "Touch Area"),
             valueText = "${settings.pointerTouchAreaDp}dp",
-            description = t("注入点击时模拟手指接触面积。", "Simulated contact area used when injecting a tap."),
+            description = t("箭头松手点击时的模拟接触面积，最低可调到 1dp。", "Simulated contact area used when releasing the arrow, down to 1dp."),
             value = settings.pointerTouchAreaDp,
-            range = 6..48,
+            range = GestureConfig.POINTER_TOUCH_AREA_MIN_DP..GestureConfig.POINTER_TOUCH_AREA_MAX_DP,
             onValueChange = { onSettingsChange(settings.copy(pointerTouchAreaDp = it)) },
         )
     }

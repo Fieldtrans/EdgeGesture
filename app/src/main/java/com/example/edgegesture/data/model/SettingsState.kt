@@ -19,6 +19,9 @@ data class SettingsState(
     val swipeAngleDegrees: Int,
     val doubleTapTimeoutMs: Int,
     val notificationShadeMode: String,
+    val notificationTopEdgeDp: Int,
+    val notificationHotspotStartPercent: Int,
+    val notificationHotspotEndPercent: Int,
     val pointerRadiusDp: Int,
     val pointerControlAlpha: Int,
     val pointerSensitivity: Int,
@@ -81,6 +84,9 @@ data class SettingsState(
             .put("swipeAngleDegrees", swipeAngleDegrees)
             .put("doubleTapTimeoutMs", doubleTapTimeoutMs)
             .put("notificationShadeMode", notificationShadeMode)
+            .put("notificationTopEdgeDp", notificationTopEdgeDp)
+            .put("notificationHotspotStartPercent", notificationHotspotStartPercent)
+            .put("notificationHotspotEndPercent", notificationHotspotEndPercent)
             .put("pointerRadiusDp", pointerRadiusDp)
             .put("pointerControlAlpha", pointerControlAlpha)
             .put("pointerSensitivity", pointerSensitivity)
@@ -108,43 +114,6 @@ data class SettingsState(
             .toString(2)
     }
 
-    /**
-     * Create a copy with recommended default values
-     */
-    fun withRecommendedValues(): SettingsState {
-        return copy(
-            edgeWidthDp = GestureConfig.DEFAULT_EDGE_WIDTH_DP,
-            swipeDistanceDp = GestureConfig.DEFAULT_SWIPE_DISTANCE_DP,
-            triggerRegionStartPercent = GestureConfig.DEFAULT_TRIGGER_REGION_START_PERCENT,
-            triggerRegionEndPercent = GestureConfig.DEFAULT_TRIGGER_REGION_END_PERCENT,
-            swipeAngleDegrees = GestureConfig.DEFAULT_SWIPE_ANGLE_DEGREES,
-            doubleTapTimeoutMs = GestureConfig.DEFAULT_DOUBLE_TAP_TIMEOUT_MS,
-            notificationShadeMode = GestureConfig.DEFAULT_NOTIFICATION_SHADE_MODE,
-            pointerRadiusDp = GestureConfig.DEFAULT_POINTER_RADIUS_DP,
-            pointerControlAlpha = GestureConfig.DEFAULT_POINTER_CONTROL_ALPHA,
-            pointerSensitivity = GestureConfig.DEFAULT_POINTER_SENSITIVITY,
-            pointerArrowDp = GestureConfig.DEFAULT_POINTER_ARROW_DP,
-            pointerTouchAreaDp = GestureConfig.DEFAULT_POINTER_TOUCH_AREA_DP,
-            pointerLineDp = GestureConfig.DEFAULT_POINTER_LINE_DP,
-            pointerMarginDp = GestureConfig.DEFAULT_POINTER_MARGIN_DP,
-            pointerCancelDistanceDp = GestureConfig.DEFAULT_POINTER_CANCEL_DISTANCE_DP,
-            pointerTimeoutMs = GestureConfig.DEFAULT_POINTER_TIMEOUT_MS,
-            pointerSmoothing = GestureConfig.DEFAULT_POINTER_SMOOTHING,
-            pointerMaxSpeed = GestureConfig.DEFAULT_POINTER_MAX_SPEED,
-            pointerCurve = GestureConfig.DEFAULT_POINTER_CURVE,
-            pointerControlStyle = GestureConfig.DEFAULT_POINTER_CONTROL_STYLE,
-            trackerBallDp = GestureConfig.DEFAULT_TRACKER_BALL_DP,
-            trackerCursorDp = GestureConfig.DEFAULT_TRACKER_CURSOR_DP,
-            trackerCancelRadiusDp = GestureConfig.DEFAULT_TRACKER_CANCEL_RADIUS_DP,
-            trackerSensitivity = GestureConfig.DEFAULT_TRACKER_SENSITIVITY,
-            trackerMaxSpeed = GestureConfig.DEFAULT_TRACKER_MAX_SPEED,
-            trackerSmoothing = GestureConfig.DEFAULT_TRACKER_SMOOTHING,
-            pointerColorRed = GestureConfig.DEFAULT_POINTER_COLOR_RED,
-            pointerColorGreen = GestureConfig.DEFAULT_POINTER_COLOR_GREEN,
-            pointerColorBlue = GestureConfig.DEFAULT_POINTER_COLOR_BLUE,
-        )
-    }
-
     companion object {
         /**
          * Create default settings state
@@ -169,6 +138,9 @@ data class SettingsState(
                 swipeAngleDegrees = GestureConfig.DEFAULT_SWIPE_ANGLE_DEGREES,
                 doubleTapTimeoutMs = GestureConfig.DEFAULT_DOUBLE_TAP_TIMEOUT_MS,
                 notificationShadeMode = GestureConfig.DEFAULT_NOTIFICATION_SHADE_MODE,
+                notificationTopEdgeDp = GestureConfig.DEFAULT_NOTIFICATION_TOP_EDGE_DP,
+                notificationHotspotStartPercent = GestureConfig.DEFAULT_NOTIFICATION_HOTSPOT_START_PERCENT,
+                notificationHotspotEndPercent = GestureConfig.DEFAULT_NOTIFICATION_HOTSPOT_END_PERCENT,
                 pointerRadiusDp = GestureConfig.DEFAULT_POINTER_RADIUS_DP,
                 pointerControlAlpha = GestureConfig.DEFAULT_POINTER_CONTROL_ALPHA,
                 pointerSensitivity = GestureConfig.DEFAULT_POINTER_SENSITIVITY,
@@ -278,6 +250,19 @@ data class SettingsState(
                             GestureConfig.DEFAULT_NOTIFICATION_SHADE_MODE,
                         ),
                     ),
+                notificationTopEdgeDp =
+                    json.optInt("notificationTopEdgeDp", GestureConfig.DEFAULT_NOTIFICATION_TOP_EDGE_DP)
+                        .coerceIn(GestureConfig.NOTIFICATION_TOP_EDGE_MIN_DP, GestureConfig.NOTIFICATION_TOP_EDGE_MAX_DP),
+                notificationHotspotStartPercent =
+                    json.optInt(
+                        "notificationHotspotStartPercent",
+                        GestureConfig.DEFAULT_NOTIFICATION_HOTSPOT_START_PERCENT,
+                    ).coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT),
+                notificationHotspotEndPercent =
+                    json.optInt(
+                        "notificationHotspotEndPercent",
+                        GestureConfig.DEFAULT_NOTIFICATION_HOTSPOT_END_PERCENT,
+                    ).coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT),
                 pointerRadiusDp =
                     json.optInt("pointerRadiusDp", GestureConfig.DEFAULT_POINTER_RADIUS_DP)
                         .coerceIn(40, 300),
@@ -297,7 +282,7 @@ data class SettingsState(
                         "pointerTouchAreaDp",
                         GestureConfig.DEFAULT_POINTER_TOUCH_AREA_DP,
                     )
-                        .coerceIn(8, 48),
+                        .coerceIn(GestureConfig.POINTER_TOUCH_AREA_MIN_DP, GestureConfig.POINTER_TOUCH_AREA_MAX_DP),
                 pointerLineDp =
                     json.optInt("pointerLineDp", GestureConfig.DEFAULT_POINTER_LINE_DP)
                         .coerceIn(1, 10),

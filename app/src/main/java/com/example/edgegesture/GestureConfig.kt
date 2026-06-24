@@ -14,6 +14,9 @@ object GestureConfig {
     const val KEY_SWIPE_ANGLE_DEGREES = "swipe_angle_degrees"
     const val KEY_DOUBLE_TAP_TIMEOUT_MS = "double_tap_timeout_ms"
     const val KEY_NOTIFICATION_SHADE_MODE = "notification_shade_mode"
+    const val KEY_NOTIFICATION_TOP_EDGE_DP = "notification_top_edge_dp"
+    const val KEY_NOTIFICATION_HOTSPOT_START_PERCENT = "notification_hotspot_start_percent"
+    const val KEY_NOTIFICATION_HOTSPOT_END_PERCENT = "notification_hotspot_end_percent"
     const val KEY_POINTER_RADIUS_DP = "pointer_radius_dp"
     const val KEY_POINTER_CONTROL_ALPHA = "pointer_control_alpha"
     const val KEY_POINTER_SENSITIVITY = "pointer_sensitivity"
@@ -69,6 +72,9 @@ object GestureConfig {
     const val DEFAULT_SWIPE_ANGLE_DEGREES = 30
     const val DEFAULT_DOUBLE_TAP_TIMEOUT_MS = 220
     const val DEFAULT_NOTIFICATION_SHADE_MODE = NOTIFICATION_SHADE_RELEASE
+    const val DEFAULT_NOTIFICATION_TOP_EDGE_DP = 56
+    const val DEFAULT_NOTIFICATION_HOTSPOT_START_PERCENT = 22
+    const val DEFAULT_NOTIFICATION_HOTSPOT_END_PERCENT = 78
     const val DEFAULT_POINTER_RADIUS_DP = 72
     const val DEFAULT_POINTER_CONTROL_ALPHA = 48
     const val DEFAULT_POINTER_SENSITIVITY = 100
@@ -99,6 +105,12 @@ object GestureConfig {
     const val ACCESSIBILITY_MAX_EDGE_WIDTH_SCREEN_PERCENT = 0.08f
     const val ACCESSIBILITY_SYSTEM_GESTURE_GAP_DP = 8
     const val ACCESSIBILITY_MAX_SYSTEM_GESTURE_GAP_SCREEN_PERCENT = 0.08f
+    const val POINTER_TOUCH_AREA_MIN_DP = 1
+    const val POINTER_TOUCH_AREA_MAX_DP = 48
+    const val NOTIFICATION_TOP_EDGE_MIN_DP = 1
+    const val NOTIFICATION_TOP_EDGE_MAX_DP = 96
+    const val NOTIFICATION_HOTSPOT_MIN_PERCENT = 0
+    const val NOTIFICATION_HOTSPOT_MAX_PERCENT = 100
 
     val pointerMappingValues =
         listOf(
@@ -106,7 +118,7 @@ object GestureConfig {
         )
     val pointerMappingLabels =
         listOf(
-            "精确稳定",
+            "精准稳定",
         )
 
     val pointerStyleValues =
@@ -195,6 +207,9 @@ object GestureConfig {
         swipeAngleDegrees: Int,
         doubleTapTimeoutMs: Int,
         notificationShadeMode: String,
+        notificationTopEdgeDp: Int,
+        notificationHotspotStartPercent: Int,
+        notificationHotspotEndPercent: Int,
         pointerRadiusDp: Int,
         pointerControlAlpha: Int,
         pointerSensitivity: Int,
@@ -229,11 +244,26 @@ object GestureConfig {
         intent.putExtra(KEY_SWIPE_ANGLE_DEGREES, swipeAngleDegrees)
         intent.putExtra(KEY_DOUBLE_TAP_TIMEOUT_MS, doubleTapTimeoutMs)
         intent.putExtra(KEY_NOTIFICATION_SHADE_MODE, sanitizeNotificationShadeMode(notificationShadeMode))
+        intent.putExtra(
+            KEY_NOTIFICATION_TOP_EDGE_DP,
+            notificationTopEdgeDp.coerceIn(NOTIFICATION_TOP_EDGE_MIN_DP, NOTIFICATION_TOP_EDGE_MAX_DP),
+        )
+        intent.putExtra(
+            KEY_NOTIFICATION_HOTSPOT_START_PERCENT,
+            notificationHotspotStartPercent.coerceIn(NOTIFICATION_HOTSPOT_MIN_PERCENT, NOTIFICATION_HOTSPOT_MAX_PERCENT),
+        )
+        intent.putExtra(
+            KEY_NOTIFICATION_HOTSPOT_END_PERCENT,
+            notificationHotspotEndPercent.coerceIn(NOTIFICATION_HOTSPOT_MIN_PERCENT, NOTIFICATION_HOTSPOT_MAX_PERCENT),
+        )
         intent.putExtra(KEY_POINTER_RADIUS_DP, pointerRadiusDp)
         intent.putExtra(KEY_POINTER_CONTROL_ALPHA, pointerControlAlpha)
         intent.putExtra(KEY_POINTER_SENSITIVITY, pointerSensitivity)
         intent.putExtra(KEY_POINTER_ARROW_DP, pointerArrowDp)
-        intent.putExtra(KEY_POINTER_TOUCH_AREA_DP, pointerTouchAreaDp)
+        intent.putExtra(
+            KEY_POINTER_TOUCH_AREA_DP,
+            pointerTouchAreaDp.coerceIn(POINTER_TOUCH_AREA_MIN_DP, POINTER_TOUCH_AREA_MAX_DP),
+        )
         intent.putExtra(KEY_POINTER_LINE_DP, pointerLineDp)
         intent.putExtra(KEY_POINTER_MARGIN_DP, pointerMarginDp)
         intent.putExtra(KEY_POINTER_CANCEL_DISTANCE_DP, pointerCancelDistanceDp)

@@ -1,15 +1,12 @@
 package com.example.edgegesture.ui.screens
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountTree
 import androidx.compose.material.icons.rounded.ExpandMore
@@ -19,7 +16,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,7 +34,6 @@ import com.example.edgegesture.ui.utils.actionLabel
 import com.example.edgegesture.ui.utils.actionValuesForGesture
 import com.example.edgegesture.ui.utils.edgeLabel
 import com.example.edgegesture.ui.utils.gestureLabel
-import com.example.edgegesture.ui.utils.notificationShadeModeLabel
 import com.example.edgegesture.ui.utils.t
 
 @Composable
@@ -66,37 +61,6 @@ fun ActionPage(
     }
 
     SettingsSection(t("动作参数", "Action Timing"), Icons.Rounded.Tune) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(t("通知栏触发方式", "Notification Trigger"), style = MaterialTheme.typography.bodyLarge)
-            Text(
-                text =
-                    t(
-                        "预动画会跟随手势进度，到顶部时吸附为完成态。选择碰到顶部立刻下拉，或松手点击顶部后再下拉。",
-                        "The preview follows gesture progress and snaps ready at the top. Choose instant pull-down " +
-                            "on top touch, or pull down after releasing on the status bar.",
-                    ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-            ) {
-                GestureConfig.notificationShadeModes.forEach { mode ->
-                    FilterChip(
-                        selected = settings.notificationShadeMode == mode,
-                        onClick = { onSettingsChange(settings.copy(notificationShadeMode = mode)) },
-                        label = { Text(notificationShadeModeLabel(mode)) },
-                    )
-                }
-            }
-        }
         SettingSlider(
             title = t("双击等待时间", "Double-Tap Wait"),
             valueText = "${settings.doubleTapTimeoutMs}ms",
@@ -144,7 +108,7 @@ private fun ActionDropdownRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(title, modifier = Modifier.weight(1f))
         Box {
             OutlinedButton(onClick = { expanded = true }) {
                 Text(actionLabel(displayAction))

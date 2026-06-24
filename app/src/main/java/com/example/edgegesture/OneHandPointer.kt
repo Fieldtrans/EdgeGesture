@@ -6,14 +6,11 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.LinearGradient
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.PorterDuff
 import android.graphics.Rect
 import android.graphics.RectF
-import android.graphics.Shader
 import android.hardware.input.InputManager
 import android.os.Handler
 import android.os.Looper
@@ -54,6 +51,7 @@ object OneHandPointer {
         val startupInset: Float,
         val maxFingerStep: Float,
         val maxPointerSpeed: Float,
+        val notificationHotspotTop: Float,
         val notificationHotspotHeight: Float,
         val notificationPreviewHeight: Float,
         val notificationOnly: Boolean,
@@ -137,8 +135,9 @@ object OneHandPointer {
         val speedScale = maxSpeedPercent.coerceIn(40, 500) / 100f
         val maxFingerStep = dp(context, MAX_FINGER_STEP_DP) * speedScale
         val maxPointerSpeed = bounds.second * speedScale
+        val notificationHotspotTop = 0f
         val notificationHotspotHeight = notificationHotspotHeight(context, bounds.second)
-        val notificationPreviewHeight = notificationPreviewHeight(notificationHotspotHeight)
+        val notificationPreviewHeight = notificationHotspotHeight
         val pointerColor =
             Color.rgb(
                 RuntimeGestureConfig.pointerColorRed.coerceIn(0, 255),
@@ -151,7 +150,15 @@ object OneHandPointer {
         val startupInset = maxOf(dp(context, STARTUP_INSET_DP), arrowSize * 1.4f)
         val initialPointer =
             if (controlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
-                trackerCursorStart(bounds.first, bounds.second, startX, margin)
+                trackerCursorStart(
+                    width = bounds.first,
+                    height = bounds.second,
+                    anchorX = startX,
+                    anchorY = startY,
+                    margin = margin,
+                    controlRadius = controlRadius,
+                    touchArea = touchArea,
+                )
             } else {
                 startupPointerFor(
                     width = bounds.first,
@@ -185,6 +192,7 @@ object OneHandPointer {
                 startupInset = startupInset,
                 maxFingerStep = maxFingerStep,
                 maxPointerSpeed = maxPointerSpeed,
+                notificationHotspotTop = notificationHotspotTop,
                 notificationHotspotHeight = notificationHotspotHeight,
                 notificationPreviewHeight = notificationPreviewHeight,
                 notificationOnly = notificationOnly,
@@ -414,15 +422,19 @@ object OneHandPointer {
         width: Float,
         height: Float,
         anchorX: Float,
+        anchorY: Float,
         margin: Float,
+        controlRadius: Float,
+        touchArea: Float,
     ): Pair<Float, Float> {
+        val startOffset = maxOf(controlRadius * 1.35f, touchArea * 2.6f, minOf(width, height) * 0.1f)
         val x =
             if (anchorX >= width / 2f) {
-                width * TRACKER_CURSOR_START_X_FROM_RIGHT
+                anchorX - startOffset
             } else {
-                width * TRACKER_CURSOR_START_X_FROM_LEFT
+                anchorX + startOffset
             }
-        val y = height * TRACKER_CURSOR_START_Y
+        val y = anchorY - startOffset * 0.35f
 
         return x.coerceIn(margin, width - margin) to y.coerceIn(margin, height - margin)
     }
@@ -596,18 +608,22 @@ object OneHandPointer {
                     GestureConfig.NOTIFICATION_SHADE_RELEASE &&
                     isInsideNotificationHotspot(current, arrowTipX, arrowTipY)
             postToMain {
-                ClickFeedbackOverlay(context, arrowTipX, arrowTipY, tapTouchArea, current.color).show()
-                mainHandler?.postDelayed({
-                    if (notificationTap) {
+                if (notificationTap) {
+                    mainHandler?.postDelayed({
                         val expanded = expandNotificationShade(context.applicationContext)
                         DebugLog.info("notification shade clicked by pointer expanded=$expanded")
-                    } else if (!current.notificationOnly || current.notificationShadeTriggered) {
-                        injectTap(context.applicationContext, arrowTipX, arrowTipY, tapTouchArea)
-                        DebugLog.info("tap requested at arrow tip $arrowTipX,$arrowTipY")
-                    } else {
-                        DebugLog.info("notification action canceled outside status bar x=$arrowTipX y=$arrowTipY")
-                    }
-                }, TAP_AFTER_OVERLAY_DISMISS_MS)
+                    }, TAP_AFTER_OVERLAY_DISMISS_MS)
+                } else {
+                    ClickFeedbackOverlay(context, arrowTipX, arrowTipY, tapTouchArea, current.color).show()
+                    mainHandler?.postDelayed({
+                        if (!current.notificationOnly || current.notificationShadeTriggered) {
+                            injectTap(context.applicationContext, arrowTipX, arrowTipY, tapTouchArea)
+                            DebugLog.info("tap requested at arrow tip $arrowTipX,$arrowTipY")
+                        } else {
+                            DebugLog.info("notification action canceled outside status bar x=$arrowTipX y=$arrowTipY")
+                        }
+                    }, TAP_AFTER_OVERLAY_DISMISS_MS)
+                }
             }
         } else if (click) {
             DebugLog.info("tap canceled length=${lineLength(current)}")
@@ -672,9 +688,24 @@ object OneHandPointer {
         x: Float,
         y: Float,
     ): Boolean {
-        return y <= current.notificationHotspotHeight &&
-            x >= 0f &&
-            x <= current.width
+        val startPercent =
+            minOf(
+                RuntimeGestureConfig.notificationHotspotStartPercent,
+                RuntimeGestureConfig.notificationHotspotEndPercent,
+            ).coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT) / 100f
+        val endPercent =
+            maxOf(
+                RuntimeGestureConfig.notificationHotspotStartPercent,
+                RuntimeGestureConfig.notificationHotspotEndPercent,
+            ).coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT) / 100f
+        val left = current.width * startPercent
+        val right = current.width * endPercent
+        val top = current.notificationHotspotTop
+        val bottom = top + current.notificationHotspotHeight
+        return y >= top &&
+            y <= bottom &&
+            x >= left &&
+            x <= right
     }
 
     private fun updateNotificationPreview(current: Session) {
@@ -700,23 +731,7 @@ object OneHandPointer {
     }
 
     private fun notificationPreviewProgress(current: Session): Float {
-        if (current.pointerX < 0f || current.pointerX > current.width) return 0f
-        if (current.pointerY > current.notificationPreviewHeight) return 0f
-
-        val previewSpan = (current.notificationPreviewHeight - current.notificationHotspotHeight).coerceAtLeast(1f)
-        val rawProgress =
-            if (current.pointerY <= current.notificationHotspotHeight) {
-                1f
-            } else {
-                1f - ((current.pointerY - current.notificationHotspotHeight) / previewSpan)
-            }
-        val progress =
-            if (rawProgress >= NOTIFICATION_READY_PROGRESS) {
-                1f
-            } else {
-                rawProgress
-            }
-        return progress.coerceIn(0f, 1f)
+        return if (isInsideNotificationHotspot(current, current.pointerX, current.pointerY)) 1f else 0f
     }
 
     private fun expandNotificationShade(context: Context): Boolean {
@@ -745,15 +760,11 @@ object OneHandPointer {
         context: Context,
         screenHeight: Float,
     ): Float {
-        val density = context.resources.displayMetrics.density
-        val minHeight = NOTIFICATION_HOTSPOT_MIN_DP * density
-        val maxHeight = NOTIFICATION_HOTSPOT_MAX_DP * density
-        return (screenHeight * NOTIFICATION_HOTSPOT_SCREEN_FRACTION)
-            .coerceIn(minHeight, maxHeight)
-    }
-
-    private fun notificationPreviewHeight(hotspotHeight: Float): Float {
-        return hotspotHeight * NOTIFICATION_PREVIEW_HEIGHT_MULTIPLIER
+        return (
+            RuntimeGestureConfig.notificationTopEdgeDp
+                .coerceIn(GestureConfig.NOTIFICATION_TOP_EDGE_MIN_DP, GestureConfig.NOTIFICATION_TOP_EDGE_MAX_DP) *
+                context.resources.displayMetrics.density
+        )
     }
 
     private fun shouldCancelClick(current: Session): Boolean {
@@ -956,6 +967,8 @@ object OneHandPointer {
                 PixelFormat.TRANSLUCENT,
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
+                layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
             }
 
         fun show(
@@ -1188,27 +1201,16 @@ object OneHandPointer {
                     style = Paint.Style.STROKE
                     strokeWidth = dp(2f)
                 }
-            private val notificationArrowPaint =
+            private val notificationAreaPaint =
                 Paint(Paint.ANTI_ALIAS_FLAG).apply {
                     style = Paint.Style.FILL
                 }
-            private val notificationPanelPaint =
-                Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    style = Paint.Style.FILL
-                }
-            private val notificationHandlePaint =
-                Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    style = Paint.Style.FILL
-                }
-            private val notificationIconPaint =
+            private val notificationAreaStrokePaint =
                 Paint(Paint.ANTI_ALIAS_FLAG).apply {
                     style = Paint.Style.STROKE
-                    strokeCap = Paint.Cap.ROUND
-                    strokeJoin = Paint.Join.ROUND
+                    strokeWidth = dp(1.5f)
                 }
-            private val notificationPanelRect = RectF()
-            private val notificationHandleRect = RectF()
-            private val notificationArrowPath = Path()
+            private val notificationAreaRect = RectF()
 
             fun update(
                 anchorX: Float,
@@ -1313,6 +1315,8 @@ object OneHandPointer {
                 val progress = appearProgress.coerceIn(0f, 1f)
                 if (progress <= 0f) return
 
+                drawNotificationPreview(canvas, progress)
+
                 val scale = 0.7f + 0.3f * progress
                 val centerX = (anchorX + pointerX) / 2f
                 val centerY = (anchorY + pointerY) / 2f
@@ -1327,8 +1331,6 @@ object OneHandPointer {
                 controlPaint.alpha = (savedControlPaintAlpha * progress).toInt()
                 cursorPaint.alpha = (savedCursorPaintAlpha * progress).toInt()
                 cursorStrokePaint.alpha = (savedCursorStrokePaintAlpha * progress).toInt()
-
-                drawNotificationPreview(canvas)
 
                 if (style == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
                     drawTracker(canvas)
@@ -1350,157 +1352,72 @@ object OneHandPointer {
                 canvas.restore()
             }
 
-            private fun drawNotificationPreview(canvas: Canvas) {
+            private fun drawNotificationPreview(
+                canvas: Canvas,
+                overlayAlpha: Float,
+            ) {
                 if (notificationPreviewProgress <= 0f) return
 
                 val viewWidth = drawingWidth().toFloat()
-                val cx = viewWidth / 2f
                 val progress = notificationPreviewProgress.coerceIn(0f, 1f)
                 val eased = materialEmphasizedProgress(progress)
-                val top = notificationPreviewSafeTop()
-                val statusHeight = androidStatusBarHeight()
-                val panelHeight = dp(6f) + dp(42f) * eased
-                val panelBottom = top + statusHeight + panelHeight
+                val startPercent =
+                    minOf(
+                        RuntimeGestureConfig.notificationHotspotStartPercent,
+                        RuntimeGestureConfig.notificationHotspotEndPercent,
+                    ).coerceIn(
+                        GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT,
+                        GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT,
+                    ) / 100f
+                val endPercent =
+                    maxOf(
+                        RuntimeGestureConfig.notificationHotspotStartPercent,
+                        RuntimeGestureConfig.notificationHotspotEndPercent,
+                    ).coerceIn(
+                        GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT,
+                        GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT,
+                    ) / 100f
+                val top = 0f
+                val left = viewWidth * startPercent
+                val right = (viewWidth * endPercent).coerceAtLeast(left + dp(1f))
+                val bottom =
+                    (
+                        RuntimeGestureConfig.notificationTopEdgeDp
+                            .coerceIn(GestureConfig.NOTIFICATION_TOP_EDGE_MIN_DP, GestureConfig.NOTIFICATION_TOP_EDGE_MAX_DP) *
+                            resources.displayMetrics.density
+                    ).coerceAtLeast(dp(1f))
                 val baseRed = Color.red(linePaint.color)
                 val baseGreen = Color.green(linePaint.color)
                 val baseBlue = Color.blue(linePaint.color)
-                val panelAlpha =
-                    ((38 + 132 * eased) + if (notificationPreviewReady) 36 else 0)
+                val alphaScale = overlayAlpha.coerceIn(0f, 1f)
+                val fillAlpha =
+                    (((36 + 64 * eased) + if (notificationPreviewReady) 24 else 0) * alphaScale)
                         .toInt()
-                        .coerceIn(0, 206)
-                val accentAlpha =
-                    ((78 + 126 * eased) + if (notificationPreviewReady) 42 else 0)
+                        .coerceIn(0, 150)
+                val strokeAlpha =
+                    (((100 + 80 * eased) + if (notificationPreviewReady) 32 else 0) * alphaScale)
                         .toInt()
-                        .coerceIn(0, 236)
-
-                notificationPanelRect.set(0f, top, viewWidth, panelBottom)
-                notificationPanelPaint.shader =
-                    LinearGradient(
-                        cx,
-                        top,
-                        cx,
-                        panelBottom,
-                        Color.argb(panelAlpha, baseRed, baseGreen, baseBlue),
-                        Color.argb((panelAlpha * 0.42f).toInt(), baseRed, baseGreen, baseBlue),
-                        Shader.TileMode.CLAMP,
-                    )
+                        .coerceIn(0, 230)
+                notificationAreaRect.set(left, top, right, bottom)
+                notificationAreaPaint.color = Color.argb(fillAlpha, baseRed, baseGreen, baseBlue)
                 canvas.drawRoundRect(
-                    notificationPanelRect,
-                    dp(18f),
-                    dp(18f),
-                    notificationPanelPaint,
+                    notificationAreaRect,
+                    dp(3f),
+                    dp(3f),
+                    notificationAreaPaint,
                 )
-                notificationPanelPaint.shader = null
-
-                val handleWidth = dp(34f) + dp(38f) * eased
-                val handleHeight = dp(3f) + dp(2f) * eased
-                val handleY = panelBottom - dp(9f)
-                notificationHandleRect.set(
-                    cx - handleWidth / 2f,
-                    handleY,
-                    cx + handleWidth / 2f,
-                    handleY + handleHeight,
-                )
-                notificationHandlePaint.color = Color.argb(accentAlpha, baseRed, baseGreen, baseBlue)
+                notificationAreaStrokePaint.color = Color.argb(strokeAlpha, baseRed, baseGreen, baseBlue)
                 canvas.drawRoundRect(
-                    notificationHandleRect,
-                    handleHeight,
-                    handleHeight,
-                    notificationHandlePaint,
+                    notificationAreaRect,
+                    dp(3f),
+                    dp(3f),
+                    notificationAreaStrokePaint,
                 )
-
-                val iconCenterY = top + statusHeight + dp(10f) + dp(11f) * eased
-                val bellRadius = dp(5.5f) + dp(1.8f) * eased
-                val iconShift = dp(5f) * (1f - eased)
-                notificationIconPaint.color = Color.argb(accentAlpha, baseRed, baseGreen, baseBlue)
-                notificationIconPaint.strokeWidth = dp(if (notificationPreviewReady) 2.3f else 1.9f)
-                canvas.drawArc(
-                    cx - bellRadius,
-                    iconCenterY - bellRadius - iconShift,
-                    cx + bellRadius,
-                    iconCenterY + bellRadius - iconShift,
-                    202f,
-                    136f,
-                    false,
-                    notificationIconPaint,
-                )
-                canvas.drawLine(
-                    cx - bellRadius * 0.78f,
-                    iconCenterY + bellRadius * 0.48f - iconShift,
-                    cx + bellRadius * 0.78f,
-                    iconCenterY + bellRadius * 0.48f - iconShift,
-                    notificationIconPaint,
-                )
-                canvas.drawCircle(
-                    cx,
-                    iconCenterY + bellRadius * 0.78f - iconShift,
-                    dp(1.4f + 0.7f * eased),
-                    notificationHandlePaint,
-                )
-
-                val arrowTop = panelBottom + dp(2f)
-                val arrowHeight = dp(8f) + dp(8f) * eased
-                val arrowWidth = dp(17f) + dp(7f) * eased
-                val shaftWidth = dp(3f) + dp(1.5f) * eased
-                val shaftBottom = arrowTop + arrowHeight * 0.48f
-                val tipY = arrowTop + arrowHeight
-                val startColor =
-                    Color.argb(
-                        (34 + 62 * eased).toInt().coerceIn(0, 96),
-                        baseRed,
-                        baseGreen,
-                        baseBlue,
-                    )
-                val endColor =
-                    Color.argb(
-                        accentAlpha,
-                        baseRed,
-                        baseGreen,
-                        baseBlue,
-                    )
-
-                notificationArrowPath.reset()
-                notificationArrowPath.moveTo(cx - shaftWidth / 2f, arrowTop)
-                notificationArrowPath.lineTo(cx + shaftWidth / 2f, arrowTop)
-                notificationArrowPath.lineTo(cx + shaftWidth / 2f, shaftBottom)
-                notificationArrowPath.lineTo(cx + arrowWidth / 2f, shaftBottom)
-                notificationArrowPath.lineTo(cx, tipY)
-                notificationArrowPath.lineTo(cx - arrowWidth / 2f, shaftBottom)
-                notificationArrowPath.lineTo(cx - shaftWidth / 2f, shaftBottom)
-                notificationArrowPath.close()
-
-                notificationArrowPaint.shader =
-                    LinearGradient(
-                        cx,
-                        arrowTop,
-                        cx,
-                        tipY,
-                        startColor,
-                        endColor,
-                        Shader.TileMode.CLAMP,
-                    )
-                canvas.drawPath(notificationArrowPath, notificationArrowPaint)
-                notificationArrowPaint.shader = null
             }
 
             private fun materialEmphasizedProgress(progress: Float): Float {
                 val x = progress.coerceIn(0f, 1f)
                 return x * x * (3f - 2f * x)
-            }
-
-            private fun notificationPreviewSafeTop(): Float {
-                val cutoutTop = rootWindowInsets?.displayCutout?.safeInsetTop?.toFloat() ?: 0f
-                val statusTop = androidStatusBarHeight()
-                return max(max(cutoutTop, statusTop) - dp(24f), dp(4f))
-            }
-
-            private fun androidStatusBarHeight(): Float {
-                val id = resources.getIdentifier("status_bar_height", "dimen", "android")
-                return if (id > 0) {
-                    resources.getDimensionPixelSize(id).toFloat()
-                } else {
-                    dp(30f)
-                }
             }
 
             private fun drawTracker(canvas: Canvas) {
@@ -1638,7 +1555,10 @@ object OneHandPointer {
                 }
 
                 if (notificationPreviewProgress > 0f) {
-                    val previewHeight = notificationPreviewSafeTop() + androidStatusBarHeight() + dp(76f)
+                    val previewHeight =
+                        RuntimeGestureConfig.notificationTopEdgeDp
+                            .coerceIn(GestureConfig.NOTIFICATION_TOP_EDGE_MIN_DP, GestureConfig.NOTIFICATION_TOP_EDGE_MAX_DP) *
+                            resources.displayMetrics.density
                     left = minOf(left, 0f)
                     top = minOf(top, 0f)
                     right = maxOf(right, viewWidth.toFloat())
@@ -1804,13 +1724,6 @@ object OneHandPointer {
     private const val TRACKER_CURSOR_GAIN = 2.2f
 
     private const val DEAD_ZONE_PX = 0.8f
-    private const val TRACKER_CURSOR_START_X_FROM_RIGHT = 0.44f
-    private const val TRACKER_CURSOR_START_X_FROM_LEFT = 0.56f
-    private const val TRACKER_CURSOR_START_Y = 0.38f
-    private const val NOTIFICATION_HOTSPOT_SCREEN_FRACTION = 0.008f
-    private const val NOTIFICATION_HOTSPOT_MIN_DP = 4f
-    private const val NOTIFICATION_HOTSPOT_MAX_DP = 12f
-    private const val NOTIFICATION_PREVIEW_HEIGHT_MULTIPLIER = 8.0f
     private const val NOTIFICATION_READY_PROGRESS = 0.88f
     private const val FRAME_FALLBACK_DELAY_MS = 8L
 }

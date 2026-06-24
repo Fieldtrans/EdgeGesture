@@ -1,7 +1,14 @@
-package com.example.edgegesture.ui.screens
+﻿package com.example.edgegesture.ui.screens
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,14 +21,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -30,22 +40,24 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.edgegesture.GestureConfig
 import com.example.edgegesture.data.model.SettingsState
 import com.example.edgegesture.ui.components.SettingSlider
 import com.example.edgegesture.ui.components.SettingsSection
 import com.example.edgegesture.ui.utils.drawArrow
+import com.example.edgegesture.ui.utils.notificationShadeModeLabel
 import com.example.edgegesture.ui.utils.t
 import com.example.edgegesture.ui.viewmodel.HookStatus
-import kotlin.math.cos
-import kotlin.math.sin
 
 @Composable
 fun TriggerPage(
     settings: SettingsState,
     onSettingsChange: (SettingsState) -> Unit,
     hookStatus: HookStatus,
+    bottomSpacing: Dp = 24.dp,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -59,44 +71,11 @@ fun TriggerPage(
                 Modifier
                     .fillMaxWidth()
                     .weight(1f),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(bottom = bottomSpacing),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             item {
-                SettingsSection(t("触发区域", "Trigger Area"), Icons.Rounded.TouchApp) {
-                    SettingSlider(
-                        title = t("区域起点", "Area Start"),
-                        valueText = "${settings.triggerRegionStartPercent}%",
-                        description = t("从屏幕上方开始计算。", "Measured from the top of the screen."),
-                        value = settings.triggerRegionStartPercent,
-                        range = 0..100,
-                        onValueChange = { onSettingsChange(settings.copy(triggerRegionStartPercent = it)) },
-                    )
-                    SettingSlider(
-                        title = t("区域终点", "Area End"),
-                        valueText = "${settings.triggerRegionEndPercent}%",
-                        description =
-                            t(
-                                "区域终点可以低于起点，内部会自动取有效范围。",
-                                "The end can be lower than the start; the valid range is normalized automatically.",
-                            ),
-                        value = settings.triggerRegionEndPercent,
-                        range = 0..100,
-                        onValueChange = { onSettingsChange(settings.copy(triggerRegionEndPercent = it)) },
-                    )
-                    SettingSlider(
-                        title = t("边缘宽度", "Edge Width"),
-                        valueText = "${settings.edgeWidthDp}dp",
-                        description = t("推荐先保持 18dp 左右，避免系统返回冲突。", "Start around 18dp to avoid conflicts with the system back gesture."),
-                        value = settings.edgeWidthDp,
-                        range = GestureConfig.ACCESSIBILITY_MIN_EDGE_WIDTH_DP..GestureConfig.ACCESSIBILITY_MAX_EDGE_WIDTH_DP,
-                        onValueChange = { onSettingsChange(settings.copy(edgeWidthDp = it)) },
-                    )
-                }
-            }
-
-            item {
-                SettingsSection(t("高级触发", "Advanced Trigger"), Icons.Rounded.Tune) {
+                SettingsSection(t("侧边触发", "Side Trigger"), Icons.Rounded.Tune) {
                     SettingSlider(
                         title = t("上划触发距离", "Swipe-Up Distance"),
                         valueText = "${settings.swipeDistanceDp}dp",
@@ -112,6 +91,78 @@ fun TriggerPage(
                         value = settings.swipeAngleDegrees,
                         range = 5..85,
                         onValueChange = { onSettingsChange(settings.copy(swipeAngleDegrees = it)) },
+                    )
+                }
+            }
+
+            item {
+                SettingsSection(t("顶部热区", "Top Hotspot"), Icons.Rounded.TouchApp) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = t("通知栏触发方式", "Notification Trigger"),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text =
+                                t(
+                                    "热区贴着屏幕最上边，横向起点和终点可自定义，用来避开左上角、右上角或挖孔区域。",
+                                    "The hotspot stays on the top edge; adjust start and end to avoid corners or cutouts.",
+                                ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        ) {
+                            GestureConfig.notificationShadeModes.forEach { mode ->
+                                FilterChip(
+                                    selected = settings.notificationShadeMode == mode,
+                                    onClick = { onSettingsChange(settings.copy(notificationShadeMode = mode)) },
+                                    label = { Text(notificationShadeModeLabel(mode)) },
+                                )
+                            }
+                        }
+                    }
+                    SettingSlider(
+                        title = t("顶部热区起点", "Top Hotspot Start"),
+                        valueText = "${settings.notificationHotspotStartPercent}%",
+                        description =
+                            t(
+                                "从屏幕左侧开始计算，热区仍然贴着最上边。",
+                                "Measured from the left edge; the hotspot remains attached to the top edge.",
+                            ),
+                        value = settings.notificationHotspotStartPercent,
+                        range = GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT..GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT,
+                        onValueChange = { onSettingsChange(settings.copy(notificationHotspotStartPercent = it)) },
+                    )
+                    SettingSlider(
+                        title = t("顶部热区终点", "Top Hotspot End"),
+                        valueText = "${settings.notificationHotspotEndPercent}%",
+                        description = t("终点减去起点就是热区横向长度。", "The end minus the start is the hotspot width."),
+                        value = settings.notificationHotspotEndPercent,
+                        range = GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT..GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT,
+                        onValueChange = { onSettingsChange(settings.copy(notificationHotspotEndPercent = it)) },
+                    )
+                    SettingSlider(
+                        title = t("顶部热区高度", "Top Hotspot Height"),
+                        valueText = "${settings.notificationTopEdgeDp}dp",
+                        description =
+                            t(
+                                "从屏幕最上边向下计算，最低可调到 1dp，不再自动移动到摄像头下方。",
+                                "Measured downward from the very top edge; it can be reduced to 1dp " +
+                                    "and is no longer shifted below the camera area.",
+                            ),
+                        value = settings.notificationTopEdgeDp,
+                        range = GestureConfig.NOTIFICATION_TOP_EDGE_MIN_DP..GestureConfig.NOTIFICATION_TOP_EDGE_MAX_DP,
+                        onValueChange = { onSettingsChange(settings.copy(notificationTopEdgeDp = it)) },
                     )
                 }
             }
@@ -149,6 +200,21 @@ fun LiveTriggerPreview(
                 GestureConfig.ACCESSIBILITY_SYSTEM_GESTURE_GAP_DP.dp.toPx()
                     .coerceAtMost(size.width * GestureConfig.ACCESSIBILITY_MAX_SYSTEM_GESTURE_GAP_SCREEN_PERCENT)
             }
+        val topEdgeHeight =
+            settings.notificationTopEdgeDp.dp.toPx()
+                .coerceIn(
+                    GestureConfig.NOTIFICATION_TOP_EDGE_MIN_DP.dp.toPx(),
+                    GestureConfig.NOTIFICATION_TOP_EDGE_MAX_DP.dp.toPx(),
+                )
+        val hotspotStartPercent =
+            minOf(settings.notificationHotspotStartPercent, settings.notificationHotspotEndPercent)
+                .coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT) / 100f
+        val hotspotEndPercent =
+            maxOf(settings.notificationHotspotStartPercent, settings.notificationHotspotEndPercent)
+                .coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT) / 100f
+        val topHotspotTop = 0f
+        val topHotspotLeft = size.width * hotspotStartPercent
+        val topHotspotWidth = (size.width * (hotspotEndPercent - hotspotStartPercent)).coerceAtLeast(1f)
         val previewColor = color.copy(alpha = 0.18f)
         val edgeColor = color.copy(alpha = 0.36f)
 
@@ -161,6 +227,11 @@ fun LiveTriggerPreview(
             color = previewColor,
             topLeft = Offset(size.width - systemGap - edgeWidth, top),
             size = Size(edgeWidth, activeHeight),
+        )
+        drawRect(
+            color = previewColor.copy(alpha = 0.14f),
+            topLeft = Offset(topHotspotLeft, topHotspotTop),
+            size = Size(topHotspotWidth, topEdgeHeight),
         )
         drawLine(
             color = edgeColor,
@@ -187,13 +258,24 @@ fun EdgeRangePreview(
         val edgeColor = settings.pointerColor
         val phoneColor = MaterialTheme.colorScheme.surface
         val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.65f)
+        val previewProgress by rememberInfiniteTransition(label = "triggerPreviewLoop").animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec =
+                infiniteRepeatable(
+                    animation = tween(durationMillis = 1800, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart,
+                ),
+            label = "triggerPreviewProgress",
+        )
+
         Surface(
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f),
             shape = RoundedCornerShape(8.dp),
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -202,19 +284,21 @@ fun EdgeRangePreview(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .height(190.dp)
-                            .padding(10.dp),
+                            .height(150.dp)
+                            .padding(8.dp),
                 ) {
-                    val phoneW = size.width * 0.34f
-                    val phoneH = size.height * 0.82f
-                    val gap = size.width * 0.08f
-                    val firstLeft = (size.width - phoneW * 2f - gap) / 2f
-                    val top = (size.height - phoneH) / 2f
+                    val panelGap = size.width * 0.08f
+                    val phoneW = (size.width - panelGap) / 2f * 0.62f
+                    val phoneH = size.height * 0.7f
+                    val firstCenterX = size.width * 0.27f
+                    val secondCenterX = size.width * 0.73f
+                    val top = (size.height - phoneH) * 0.38f
+                    val sideLeft = firstCenterX - phoneW / 2f
+                    val topLeft = secondCenterX - phoneW / 2f
+                    val sideProgress = ((previewProgress * 1.35f).coerceIn(0f, 1f))
+                    val topProgress = (((previewProgress - 0.18f) * 1.35f).coerceIn(0f, 1f))
 
-                    fun drawEnginePreview(
-                        left: Float,
-                        lsposed: Boolean,
-                    ) {
+                    fun drawSidePreview(left: Float) {
                         val right = left + phoneW
                         val edgePx =
                             settings.edgeWidthDp.dp.toPx()
@@ -222,13 +306,12 @@ fun EdgeRangePreview(
                                 .coerceAtMost(GestureConfig.ACCESSIBILITY_MAX_EDGE_WIDTH_DP.dp.toPx())
                                 .coerceAtMost(phoneW * GestureConfig.ACCESSIBILITY_MAX_EDGE_WIDTH_SCREEN_PERCENT)
                         val systemGapPx =
-                            if (lsposed) {
+                            if (enhancedMode) {
                                 0f
                             } else {
                                 GestureConfig.ACCESSIBILITY_SYSTEM_GESTURE_GAP_DP.dp.toPx()
                                     .coerceAtMost(phoneW * GestureConfig.ACCESSIBILITY_MAX_SYSTEM_GESTURE_GAP_SCREEN_PERCENT)
                             }
-                        val distancePx = settings.swipeDistanceDp.dp.toPx().coerceAtMost(phoneW * 0.52f)
                         val start =
                             minOf(settings.triggerRegionStartPercent, settings.triggerRegionEndPercent)
                                 .coerceIn(0, 100) / 100f
@@ -237,6 +320,19 @@ fun EdgeRangePreview(
                                 .coerceIn(0, 100) / 100f
                         val activeTop = top + phoneH * start
                         val activeBottom = top + phoneH * end
+                        val triggerY = activeTop + (activeBottom - activeTop).coerceAtLeast(1f) * 0.72f
+                        val triggerX = right - systemGapPx - edgePx / 2f
+                        val distancePx = settings.swipeDistanceDp.dp.toPx().coerceAtMost(phoneW * 0.6f)
+                        val endPoint =
+                            Offset(
+                                (triggerX - distancePx * 0.36f).coerceAtLeast(left + systemGapPx + edgePx),
+                                (triggerY - distancePx).coerceAtLeast(top + 10.dp.toPx()),
+                            )
+                        val animatedEnd =
+                            Offset(
+                                triggerX + (endPoint.x - triggerX) * sideProgress,
+                                triggerY + (endPoint.y - triggerY) * sideProgress,
+                            )
 
                         drawRoundRect(
                             color = phoneColor,
@@ -244,105 +340,106 @@ fun EdgeRangePreview(
                             size = Size(phoneW, phoneH),
                             cornerRadius = CornerRadius(18.dp.toPx(), 18.dp.toPx()),
                         )
-
-                        if (!lsposed) {
+                        if (!enhancedMode) {
                             drawRect(systemColor, Offset(left, top), Size(systemGapPx, phoneH))
                             drawRect(systemColor, Offset(right - systemGapPx, top), Size(systemGapPx, phoneH))
                         }
-
                         drawRect(edgeColor.copy(alpha = 0.14f), Offset(left + systemGapPx, top), Size(edgePx, phoneH))
                         drawRect(edgeColor.copy(alpha = 0.14f), Offset(right - systemGapPx - edgePx, top), Size(edgePx, phoneH))
                         drawRect(
-                            color = edgeColor.copy(alpha = if (lsposed) 0.52f else 0.38f),
-                            topLeft = Offset(left + systemGapPx, activeTop),
-                            size = Size(edgePx, activeBottom - activeTop),
-                        )
-                        drawRect(
-                            color = edgeColor.copy(alpha = if (lsposed) 0.52f else 0.38f),
+                            color = edgeColor.copy(alpha = 0.44f),
                             topLeft = Offset(right - systemGapPx - edgePx, activeTop),
                             size = Size(edgePx, activeBottom - activeTop),
                         )
-
-                        val activeBorder = if (enhancedMode == lsposed) edgeColor.copy(alpha = 0.72f) else borderColor
                         drawRoundRect(
-                            color = activeBorder,
+                            color = borderColor,
                             topLeft = Offset(left, top),
                             size = Size(phoneW, phoneH),
                             cornerRadius = CornerRadius(18.dp.toPx(), 18.dp.toPx()),
-                            style = Stroke(width = if (enhancedMode == lsposed) 2.dp.toPx() else 1.4.dp.toPx()),
+                            style = Stroke(width = 1.4.dp.toPx()),
                         )
-
-                        val activeSpan = (activeBottom - activeTop).coerceAtLeast(1f)
-                        val triggerY = activeTop + activeSpan * 0.72f
-                        val triggerX = right - systemGapPx - edgePx / 2f
-                        val guideColor = edgeColor
-                        val centerEnd =
-                            Offset(
-                                (triggerX - distancePx * 0.38f).coerceAtLeast(left + systemGapPx + edgePx),
-                                (triggerY - distancePx).coerceAtLeast(top + 12.dp.toPx()),
-                            )
                         drawArrow(
                             start = Offset(triggerX, triggerY),
-                            end = centerEnd,
+                            end = animatedEnd,
                             arrowSize = 7.dp.toPx(),
-                            color = guideColor,
+                            color = edgeColor,
                             stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
                         )
-                        val radians = Math.toRadians(settings.swipeAngleDegrees.toDouble()).toFloat()
-                        listOf((-Math.PI / 2).toFloat() - radians, (-Math.PI / 2).toFloat() + radians).forEach { angle ->
-                            drawLine(
-                                color = guideColor.copy(alpha = 0.66f),
-                                start = Offset(triggerX, triggerY),
-                                end =
-                                    Offset(
-                                        triggerX + cos(angle) * distancePx * 0.78f,
-                                        triggerY + sin(angle) * distancePx * 0.78f,
-                                    ),
-                                strokeWidth = 1.3.dp.toPx(),
-                                cap = StrokeCap.Round,
-                            )
-                        }
-                        drawCircle(guideColor, radius = 3.6.dp.toPx(), center = Offset(triggerX, triggerY))
                     }
 
-                    drawEnginePreview(firstLeft, lsposed = false)
-                    drawEnginePreview(firstLeft + phoneW + gap, lsposed = true)
+                    fun drawTopPreview(left: Float) {
+                        val hotspotHeight =
+                            settings.notificationTopEdgeDp.dp.toPx()
+                                .coerceIn(
+                                    GestureConfig.NOTIFICATION_TOP_EDGE_MIN_DP.dp.toPx(),
+                                    GestureConfig.NOTIFICATION_TOP_EDGE_MAX_DP.dp.toPx(),
+                                )
+                                .coerceAtMost(phoneH * 0.38f)
+                        val hotspotStartPercent =
+                            minOf(settings.notificationHotspotStartPercent, settings.notificationHotspotEndPercent)
+                                .coerceIn(
+                                    GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT,
+                                    GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT,
+                                ) / 100f
+                        val hotspotEndPercent =
+                            maxOf(settings.notificationHotspotStartPercent, settings.notificationHotspotEndPercent)
+                                .coerceIn(
+                                    GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT,
+                                    GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT,
+                                ) / 100f
+                        val hotspotLeft = left + phoneW * hotspotStartPercent
+                        val hotspotWidth = (phoneW * (hotspotEndPercent - hotspotStartPercent)).coerceAtLeast(1f)
+                        val pulseAlpha = 0.16f + 0.22f * topProgress
+
+                        drawRoundRect(
+                            color = phoneColor,
+                            topLeft = Offset(left, top),
+                            size = Size(phoneW, phoneH),
+                            cornerRadius = CornerRadius(18.dp.toPx(), 18.dp.toPx()),
+                        )
+                        drawRect(
+                            color = edgeColor.copy(alpha = pulseAlpha),
+                            topLeft = Offset(hotspotLeft, top),
+                            size = Size(hotspotWidth, hotspotHeight),
+                        )
+                        drawRoundRect(
+                            color = borderColor,
+                            topLeft = Offset(left, top),
+                            size = Size(phoneW, phoneH),
+                            cornerRadius = CornerRadius(18.dp.toPx(), 18.dp.toPx()),
+                            style = Stroke(width = 1.4.dp.toPx()),
+                        )
+                    }
+
+                    drawSidePreview(sideLeft)
+                    drawTopPreview(topLeft)
                 }
 
                 Column(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(start = 14.dp, top = 0.dp, end = 14.dp, bottom = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.Top,
                     ) {
-                        Spacer(Modifier.weight(12f))
+                        Spacer(Modifier.weight(1f))
                         PreviewModeLabel(
-                            color = edgeColor.copy(alpha = 0.38f),
-                            title = t("普通", "Standard"),
-                            subtitle = t("留侧滑", "Gap"),
-                            modifier = Modifier.weight(34f),
+                            color = edgeColor.copy(alpha = 0.44f),
+                            title = t("侧边", "Side"),
+                            subtitle = "±${settings.swipeAngleDegrees}° / ${settings.swipeDistanceDp}dp",
+                            modifier = Modifier.weight(5f),
                         )
-                        Spacer(Modifier.weight(8f))
+                        Spacer(Modifier.weight(1f))
                         PreviewModeLabel(
                             color = edgeColor.copy(alpha = 0.52f),
-                            title = "LSPosed",
-                            subtitle = t("贴边", "Edge"),
-                            modifier = Modifier.weight(34f),
+                            title = t("顶部", "Top"),
+                            subtitle =
+                                "${settings.notificationHotspotStartPercent}-${settings.notificationHotspotEndPercent}% / " +
+                                    "${settings.notificationTopEdgeDp}dp",
+                            modifier = Modifier.weight(5f),
                         )
-                        Spacer(Modifier.weight(12f))
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = "±${settings.swipeAngleDegrees}° / ${settings.swipeDistanceDp}dp",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        Spacer(Modifier.weight(1f))
                     }
                 }
             }
@@ -374,14 +471,20 @@ private fun PreviewModeLabel(
             )
             Text(
                 text = title,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                softWrap = false,
             )
         }
         Text(
             text = subtitle,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            softWrap = false,
         )
     }
 }

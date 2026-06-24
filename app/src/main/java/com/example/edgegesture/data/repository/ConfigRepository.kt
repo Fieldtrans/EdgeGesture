@@ -81,6 +81,21 @@ class ConfigRepository(private val context: Context) {
                             GestureConfig.DEFAULT_NOTIFICATION_SHADE_MODE,
                         ),
                     ),
+                notificationTopEdgeDp =
+                    prefs.getInt(
+                        GestureConfig.KEY_NOTIFICATION_TOP_EDGE_DP,
+                        GestureConfig.DEFAULT_NOTIFICATION_TOP_EDGE_DP,
+                    ).coerceIn(GestureConfig.NOTIFICATION_TOP_EDGE_MIN_DP, GestureConfig.NOTIFICATION_TOP_EDGE_MAX_DP),
+                notificationHotspotStartPercent =
+                    prefs.getInt(
+                        GestureConfig.KEY_NOTIFICATION_HOTSPOT_START_PERCENT,
+                        GestureConfig.DEFAULT_NOTIFICATION_HOTSPOT_START_PERCENT,
+                    ).coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT),
+                notificationHotspotEndPercent =
+                    prefs.getInt(
+                        GestureConfig.KEY_NOTIFICATION_HOTSPOT_END_PERCENT,
+                        GestureConfig.DEFAULT_NOTIFICATION_HOTSPOT_END_PERCENT,
+                    ).coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT),
                 pointerRadiusDp = prefs.getInt(GestureConfig.KEY_POINTER_RADIUS_DP, GestureConfig.DEFAULT_POINTER_RADIUS_DP),
                 pointerControlAlpha =
                     prefs.getInt(
@@ -93,7 +108,7 @@ class ConfigRepository(private val context: Context) {
                     prefs.getInt(
                         GestureConfig.KEY_POINTER_TOUCH_AREA_DP,
                         GestureConfig.DEFAULT_POINTER_TOUCH_AREA_DP,
-                    ),
+                    ).coerceIn(GestureConfig.POINTER_TOUCH_AREA_MIN_DP, GestureConfig.POINTER_TOUCH_AREA_MAX_DP),
                 pointerLineDp = prefs.getInt(GestureConfig.KEY_POINTER_LINE_DP, GestureConfig.DEFAULT_POINTER_LINE_DP),
                 pointerMarginDp = prefs.getInt(GestureConfig.KEY_POINTER_MARGIN_DP, GestureConfig.DEFAULT_POINTER_MARGIN_DP),
                 pointerCancelDistanceDp =
@@ -163,6 +178,9 @@ class ConfigRepository(private val context: Context) {
                     state.swipeAngleDegrees,
                     state.doubleTapTimeoutMs,
                     state.notificationShadeMode,
+                    state.notificationTopEdgeDp,
+                    state.notificationHotspotStartPercent,
+                    state.notificationHotspotEndPercent,
                     state.pointerRadiusDp,
                     state.pointerControlAlpha,
                     state.pointerSensitivity,
@@ -268,11 +286,38 @@ class ConfigRepository(private val context: Context) {
                 GestureConfig.KEY_NOTIFICATION_SHADE_MODE,
                 GestureConfig.sanitizeNotificationShadeMode(state.notificationShadeMode),
             )
+            .putInt(
+                GestureConfig.KEY_NOTIFICATION_TOP_EDGE_DP,
+                state.notificationTopEdgeDp.coerceIn(
+                    GestureConfig.NOTIFICATION_TOP_EDGE_MIN_DP,
+                    GestureConfig.NOTIFICATION_TOP_EDGE_MAX_DP,
+                ),
+            )
+            .putInt(
+                GestureConfig.KEY_NOTIFICATION_HOTSPOT_START_PERCENT,
+                state.notificationHotspotStartPercent.coerceIn(
+                    GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT,
+                    GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT,
+                ),
+            )
+            .putInt(
+                GestureConfig.KEY_NOTIFICATION_HOTSPOT_END_PERCENT,
+                state.notificationHotspotEndPercent.coerceIn(
+                    GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT,
+                    GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT,
+                ),
+            )
             .putInt(GestureConfig.KEY_POINTER_RADIUS_DP, state.pointerRadiusDp)
             .putInt(GestureConfig.KEY_POINTER_CONTROL_ALPHA, state.pointerControlAlpha)
             .putInt(GestureConfig.KEY_POINTER_SENSITIVITY, state.pointerSensitivity)
             .putInt(GestureConfig.KEY_POINTER_ARROW_DP, state.pointerArrowDp)
-            .putInt(GestureConfig.KEY_POINTER_TOUCH_AREA_DP, state.pointerTouchAreaDp)
+            .putInt(
+                GestureConfig.KEY_POINTER_TOUCH_AREA_DP,
+                state.pointerTouchAreaDp.coerceIn(
+                    GestureConfig.POINTER_TOUCH_AREA_MIN_DP,
+                    GestureConfig.POINTER_TOUCH_AREA_MAX_DP,
+                ),
+            )
             .putInt(GestureConfig.KEY_POINTER_LINE_DP, state.pointerLineDp)
             .putInt(GestureConfig.KEY_POINTER_MARGIN_DP, state.pointerMarginDp)
             .putInt(GestureConfig.KEY_POINTER_CANCEL_DISTANCE_DP, state.pointerCancelDistanceDp)

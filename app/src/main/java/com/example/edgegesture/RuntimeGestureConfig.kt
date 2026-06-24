@@ -20,6 +20,12 @@ object RuntimeGestureConfig {
 
     @Volatile var notificationShadeMode: String = GestureConfig.DEFAULT_NOTIFICATION_SHADE_MODE
 
+    @Volatile var notificationTopEdgeDp: Int = GestureConfig.DEFAULT_NOTIFICATION_TOP_EDGE_DP
+
+    @Volatile var notificationHotspotStartPercent: Int = GestureConfig.DEFAULT_NOTIFICATION_HOTSPOT_START_PERCENT
+
+    @Volatile var notificationHotspotEndPercent: Int = GestureConfig.DEFAULT_NOTIFICATION_HOTSPOT_END_PERCENT
+
     @Volatile var pointerRadiusDp: Int = GestureConfig.DEFAULT_POINTER_RADIUS_DP
 
     @Volatile var pointerControlAlpha: Int = GestureConfig.DEFAULT_POINTER_CONTROL_ALPHA
@@ -99,11 +105,22 @@ object RuntimeGestureConfig {
             GestureConfig.sanitizeNotificationShadeMode(
                 intent.getStringExtra(GestureConfig.KEY_NOTIFICATION_SHADE_MODE) ?: notificationShadeMode,
             )
+        notificationTopEdgeDp =
+            intent.getIntExtra(GestureConfig.KEY_NOTIFICATION_TOP_EDGE_DP, notificationTopEdgeDp)
+                .coerceIn(GestureConfig.NOTIFICATION_TOP_EDGE_MIN_DP, GestureConfig.NOTIFICATION_TOP_EDGE_MAX_DP)
+        notificationHotspotStartPercent =
+            intent.getIntExtra(GestureConfig.KEY_NOTIFICATION_HOTSPOT_START_PERCENT, notificationHotspotStartPercent)
+                .coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT)
+        notificationHotspotEndPercent =
+            intent.getIntExtra(GestureConfig.KEY_NOTIFICATION_HOTSPOT_END_PERCENT, notificationHotspotEndPercent)
+                .coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT)
         pointerRadiusDp = intent.getIntExtra(GestureConfig.KEY_POINTER_RADIUS_DP, pointerRadiusDp)
         pointerControlAlpha = intent.getIntExtra(GestureConfig.KEY_POINTER_CONTROL_ALPHA, pointerControlAlpha)
         pointerSensitivity = intent.getIntExtra(GestureConfig.KEY_POINTER_SENSITIVITY, pointerSensitivity)
         pointerArrowDp = intent.getIntExtra(GestureConfig.KEY_POINTER_ARROW_DP, pointerArrowDp)
-        pointerTouchAreaDp = intent.getIntExtra(GestureConfig.KEY_POINTER_TOUCH_AREA_DP, pointerTouchAreaDp)
+        pointerTouchAreaDp =
+            intent.getIntExtra(GestureConfig.KEY_POINTER_TOUCH_AREA_DP, pointerTouchAreaDp)
+                .coerceIn(GestureConfig.POINTER_TOUCH_AREA_MIN_DP, GestureConfig.POINTER_TOUCH_AREA_MAX_DP)
         pointerLineDp = intent.getIntExtra(GestureConfig.KEY_POINTER_LINE_DP, pointerLineDp)
         pointerMarginDp = intent.getIntExtra(GestureConfig.KEY_POINTER_MARGIN_DP, pointerMarginDp)
         pointerCancelDistanceDp = intent.getIntExtra(GestureConfig.KEY_POINTER_CANCEL_DISTANCE_DP, pointerCancelDistanceDp)
@@ -152,11 +169,22 @@ object RuntimeGestureConfig {
             GestureConfig.sanitizeNotificationShadeMode(
                 prefs.getString(GestureConfig.KEY_NOTIFICATION_SHADE_MODE, notificationShadeMode),
             )
+        notificationTopEdgeDp =
+            prefs.getInt(GestureConfig.KEY_NOTIFICATION_TOP_EDGE_DP, notificationTopEdgeDp)
+                .coerceIn(GestureConfig.NOTIFICATION_TOP_EDGE_MIN_DP, GestureConfig.NOTIFICATION_TOP_EDGE_MAX_DP)
+        notificationHotspotStartPercent =
+            prefs.getInt(GestureConfig.KEY_NOTIFICATION_HOTSPOT_START_PERCENT, notificationHotspotStartPercent)
+                .coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT)
+        notificationHotspotEndPercent =
+            prefs.getInt(GestureConfig.KEY_NOTIFICATION_HOTSPOT_END_PERCENT, notificationHotspotEndPercent)
+                .coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT)
         pointerRadiusDp = prefs.getInt(GestureConfig.KEY_POINTER_RADIUS_DP, pointerRadiusDp)
         pointerControlAlpha = prefs.getInt(GestureConfig.KEY_POINTER_CONTROL_ALPHA, pointerControlAlpha)
         pointerSensitivity = prefs.getInt(GestureConfig.KEY_POINTER_SENSITIVITY, pointerSensitivity)
         pointerArrowDp = prefs.getInt(GestureConfig.KEY_POINTER_ARROW_DP, pointerArrowDp)
-        pointerTouchAreaDp = prefs.getInt(GestureConfig.KEY_POINTER_TOUCH_AREA_DP, pointerTouchAreaDp)
+        pointerTouchAreaDp =
+            prefs.getInt(GestureConfig.KEY_POINTER_TOUCH_AREA_DP, pointerTouchAreaDp)
+                .coerceIn(GestureConfig.POINTER_TOUCH_AREA_MIN_DP, GestureConfig.POINTER_TOUCH_AREA_MAX_DP)
         pointerLineDp = prefs.getInt(GestureConfig.KEY_POINTER_LINE_DP, pointerLineDp)
         pointerMarginDp = prefs.getInt(GestureConfig.KEY_POINTER_MARGIN_DP, pointerMarginDp)
         pointerCancelDistanceDp = prefs.getInt(GestureConfig.KEY_POINTER_CANCEL_DISTANCE_DP, pointerCancelDistanceDp)

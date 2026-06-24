@@ -14,7 +14,7 @@
 
 EdgeGesture 是一个单手边缘手势工具，用来解决大屏手机单手点不到屏幕上方或远处区域的问题。它支持免 Root 的无障碍模式，也支持 LSPosed/Xposed 增强模式。
 
-![EdgeGesture 演示](docs/demo.gif)
+![EdgeGesture 演示](docs/edgegesture-homepage-demo.gif)
 
 
 ## 功能亮点

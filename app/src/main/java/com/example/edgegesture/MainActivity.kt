@@ -24,8 +24,7 @@ private const val KEY_NEW_USER_GUIDE_SHOWN = "new_user_guide_shown"
 
 /**
  * TODO: 后续迁移到 SettingsViewModel + ConfigRepository 架构。
- * 当前 MainActivity 直接管理状态和 SharedPreferences，
- * ViewModel/Repository 已创建但尚未集成，避免改动影响 hook 端配置同步。
+ * 当前 MainActivity 直接管理状态和 SharedPreferences，避免影响 hook 端配置同步。
  */
 class MainActivity : ComponentActivity() {
     private var latestState: SettingsState? = null
@@ -38,6 +37,7 @@ class MainActivity : ComponentActivity() {
 
         val initialState = loadState()
         latestState = initialState
+        syncDeviceProtectedConfig(initialState)
         sendBroadcast(buildConfigIntent(initialState))
 
         setContent {
@@ -54,11 +54,6 @@ class MainActivity : ComponentActivity() {
                         settings = next
                         latestState = next
                         saveConfig(next)
-                    },
-                    onReset = {
-                        settings = settings.withRecommendedValues()
-                        saveConfig(settings)
-                        Toast.makeText(this, t("已恢复推荐值", "Recommended values restored"), Toast.LENGTH_SHORT).show()
                     },
                     onExport = { uri ->
                         exportConfig(uri, settings)
@@ -95,12 +90,16 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun loadState(): SettingsState {
-        val prefs = getSharedPreferences(GestureConfig.PREFS_NAME, MODE_PRIVATE)
+        val normalPrefs = getSharedPreferences(GestureConfig.PREFS_NAME, MODE_PRIVATE)
+        val devicePrefs =
+            createDeviceProtectedStorageContext()
+                .getSharedPreferences(GestureConfig.PREFS_NAME, MODE_PRIVATE)
+        val prefs = chooseConfigPrefs(devicePrefs, normalPrefs)
 
         // 配置版本迁移：检查是否需要更新默认值
         val configVersion = prefs.getInt("config_schema_version", 0)
         if (configVersion < 2) {
-            // v2: 控制圆半径从120改为72，并记录旧版控制曲线默认值
+            // v2: 控制圆半径从 120 改为 72，并记录旧版控制曲线默认值
             prefs.edit()
                 .putInt("config_schema_version", 2)
                 .apply()
@@ -147,6 +146,21 @@ class MainActivity : ComponentActivity() {
                         GestureConfig.DEFAULT_NOTIFICATION_SHADE_MODE,
                     ),
                 ),
+            notificationTopEdgeDp =
+                prefs.getInt(
+                    GestureConfig.KEY_NOTIFICATION_TOP_EDGE_DP,
+                    GestureConfig.DEFAULT_NOTIFICATION_TOP_EDGE_DP,
+                ).coerceIn(GestureConfig.NOTIFICATION_TOP_EDGE_MIN_DP, GestureConfig.NOTIFICATION_TOP_EDGE_MAX_DP),
+            notificationHotspotStartPercent =
+                prefs.getInt(
+                    GestureConfig.KEY_NOTIFICATION_HOTSPOT_START_PERCENT,
+                    GestureConfig.DEFAULT_NOTIFICATION_HOTSPOT_START_PERCENT,
+                ).coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT),
+            notificationHotspotEndPercent =
+                prefs.getInt(
+                    GestureConfig.KEY_NOTIFICATION_HOTSPOT_END_PERCENT,
+                    GestureConfig.DEFAULT_NOTIFICATION_HOTSPOT_END_PERCENT,
+                ).coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT),
             pointerRadiusDp = prefs.getInt(GestureConfig.KEY_POINTER_RADIUS_DP, GestureConfig.DEFAULT_POINTER_RADIUS_DP),
             pointerControlAlpha =
                 prefs.getInt(
@@ -159,7 +173,7 @@ class MainActivity : ComponentActivity() {
                 prefs.getInt(
                     GestureConfig.KEY_POINTER_TOUCH_AREA_DP,
                     GestureConfig.DEFAULT_POINTER_TOUCH_AREA_DP,
-                ),
+                ).coerceIn(GestureConfig.POINTER_TOUCH_AREA_MIN_DP, GestureConfig.POINTER_TOUCH_AREA_MAX_DP),
             pointerLineDp = prefs.getInt(GestureConfig.KEY_POINTER_LINE_DP, GestureConfig.DEFAULT_POINTER_LINE_DP),
             pointerMarginDp = prefs.getInt(GestureConfig.KEY_POINTER_MARGIN_DP, GestureConfig.DEFAULT_POINTER_MARGIN_DP),
             pointerCancelDistanceDp =
@@ -198,6 +212,45 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    private fun chooseConfigPrefs(
+        devicePrefs: SharedPreferences,
+        normalPrefs: SharedPreferences,
+    ): SharedPreferences {
+        val deviceHasConfig = devicePrefs.contains(GestureConfig.KEY_ENABLED)
+        val normalHasConfig = normalPrefs.contains(GestureConfig.KEY_ENABLED)
+
+        if (!deviceHasConfig && normalHasConfig) return normalPrefs
+        if (deviceHasConfig && !normalHasConfig) return devicePrefs
+
+        val deviceUpdatedAt = devicePrefs.getLong(GestureConfig.KEY_CONFIG_UPDATED_AT, 0L)
+        val normalUpdatedAt = normalPrefs.getLong(GestureConfig.KEY_CONFIG_UPDATED_AT, 0L)
+        return if (normalUpdatedAt >= deviceUpdatedAt) normalPrefs else devicePrefs
+    }
+
+    private fun syncDeviceProtectedConfig(state: SettingsState) {
+        runCatching {
+            val normalPrefs = getSharedPreferences(GestureConfig.PREFS_NAME, MODE_PRIVATE)
+            val devicePrefs =
+                createDeviceProtectedStorageContext()
+                    .getSharedPreferences(GestureConfig.PREFS_NAME, MODE_PRIVATE)
+            val normalUpdatedAt = normalPrefs.getLong(GestureConfig.KEY_CONFIG_UPDATED_AT, 0L)
+            val deviceUpdatedAt = devicePrefs.getLong(GestureConfig.KEY_CONFIG_UPDATED_AT, 0L)
+
+            if (!devicePrefs.contains(GestureConfig.KEY_ENABLED) || normalUpdatedAt > deviceUpdatedAt) {
+                val savedAt = normalUpdatedAt.takeIf { it > 0L } ?: System.currentTimeMillis()
+                val editor = devicePrefs.edit()
+                putCurrentConfig(editor, state, savedAt)
+                if (editor.commit()) {
+                    DebugLog.info("device protected config synced on app start")
+                } else {
+                    DebugLog.info("device protected config sync returned false")
+                }
+            }
+        }.onFailure {
+            DebugLog.info("device protected config sync failed: ${it.message}")
+        }
+    }
+
     private fun saveConfig(state: SettingsState) {
         latestState = state
 
@@ -227,6 +280,9 @@ class MainActivity : ComponentActivity() {
             state.swipeAngleDegrees,
             state.doubleTapTimeoutMs,
             state.notificationShadeMode,
+            state.notificationTopEdgeDp,
+            state.notificationHotspotStartPercent,
+            state.notificationHotspotEndPercent,
             state.pointerRadiusDp,
             state.pointerControlAlpha,
             state.pointerSensitivity,
@@ -299,11 +355,38 @@ class MainActivity : ComponentActivity() {
                 GestureConfig.KEY_NOTIFICATION_SHADE_MODE,
                 GestureConfig.sanitizeNotificationShadeMode(state.notificationShadeMode),
             )
+            .putInt(
+                GestureConfig.KEY_NOTIFICATION_TOP_EDGE_DP,
+                state.notificationTopEdgeDp.coerceIn(
+                    GestureConfig.NOTIFICATION_TOP_EDGE_MIN_DP,
+                    GestureConfig.NOTIFICATION_TOP_EDGE_MAX_DP,
+                ),
+            )
+            .putInt(
+                GestureConfig.KEY_NOTIFICATION_HOTSPOT_START_PERCENT,
+                state.notificationHotspotStartPercent.coerceIn(
+                    GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT,
+                    GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT,
+                ),
+            )
+            .putInt(
+                GestureConfig.KEY_NOTIFICATION_HOTSPOT_END_PERCENT,
+                state.notificationHotspotEndPercent.coerceIn(
+                    GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT,
+                    GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT,
+                ),
+            )
             .putInt(GestureConfig.KEY_POINTER_RADIUS_DP, state.pointerRadiusDp)
             .putInt(GestureConfig.KEY_POINTER_CONTROL_ALPHA, state.pointerControlAlpha)
             .putInt(GestureConfig.KEY_POINTER_SENSITIVITY, state.pointerSensitivity)
             .putInt(GestureConfig.KEY_POINTER_ARROW_DP, state.pointerArrowDp)
-            .putInt(GestureConfig.KEY_POINTER_TOUCH_AREA_DP, state.pointerTouchAreaDp)
+            .putInt(
+                GestureConfig.KEY_POINTER_TOUCH_AREA_DP,
+                state.pointerTouchAreaDp.coerceIn(
+                    GestureConfig.POINTER_TOUCH_AREA_MIN_DP,
+                    GestureConfig.POINTER_TOUCH_AREA_MAX_DP,
+                ),
+            )
             .putInt(GestureConfig.KEY_POINTER_LINE_DP, state.pointerLineDp)
             .putInt(GestureConfig.KEY_POINTER_MARGIN_DP, state.pointerMarginDp)
             .putInt(GestureConfig.KEY_POINTER_CANCEL_DISTANCE_DP, state.pointerCancelDistanceDp)
@@ -374,13 +457,13 @@ class MainActivity : ComponentActivity() {
                 )
             moduleLoadedInApp ->
                 HookStatus(
-                    text = t("LSPosed 已加载模块", "LSPosed module loaded"),
+                    text = t("LSPosed 模块已加载", "LSPosed module loaded"),
                     active = true,
                     enhancedActive = false,
                 )
             else ->
                 HookStatus(
-                    text = t("未检测到加载；启用 LSPosed 后需重启", "Module not detected; reboot after enabling it in LSPosed"),
+                    text = t("未检测到加载；在 LSPosed 启用后需要重启", "Module not detected; reboot after enabling it in LSPosed"),
                     active = false,
                     enhancedActive = false,
                 )

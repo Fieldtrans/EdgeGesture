@@ -35,6 +35,8 @@ class AccessibilityPointerController(
     private var cursorY = screenHeight * 0.5f
     private var trackerX = downX
     private var trackerY = downY
+    private var trackerOriginX = downX
+    private var trackerOriginY = downY
     private var cancelled = true
     private var notificationTriggered = false
 
@@ -43,6 +45,17 @@ class AccessibilityPointerController(
         fingerY: Float,
     ) {
         if (shown) return
+        if (RuntimeGestureConfig.pointerControlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
+            trackerOriginX = fingerX
+            trackerOriginY = fingerY
+            lastFingerX = fingerX
+            lastFingerY = fingerY
+            trackerX = fingerX
+            trackerY = fingerY
+            val start = trackerCursorStart(fingerX, fingerY)
+            cursorX = start.first
+            cursorY = start.second
+        }
         updatePointer(fingerX, fingerY)
         val params =
             WindowManager.LayoutParams(
@@ -141,8 +154,18 @@ class AccessibilityPointerController(
                 baseY = baseY,
                 tipX = tipX,
                 tipY = tipY,
-                controlX = downX,
-                controlY = downY,
+                controlX =
+                    if (RuntimeGestureConfig.pointerControlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
+                        trackerOriginX
+                    } else {
+                        downX
+                    },
+                controlY =
+                    if (RuntimeGestureConfig.pointerControlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
+                        trackerOriginY
+                    } else {
+                        downY
+                    },
                 trackerX = trackerX,
                 trackerY = trackerY,
                 cursorX = cursorX,
@@ -185,8 +208,8 @@ class AccessibilityPointerController(
         cursorX = (cursorX + dx).coerceIn(cursorMargin, screenWidth - cursorMargin)
         cursorY = (cursorY + dy).coerceIn(cursorMargin, screenHeight - cursorMargin)
 
-        val rawTrackerDx = fingerX - downX
-        val rawTrackerDy = fingerY - downY
+        val rawTrackerDx = fingerX - trackerOriginX
+        val rawTrackerDy = fingerY - trackerOriginY
         val rawDistance = hypot(rawTrackerDx, rawTrackerDy)
         val trackerScale =
             if (rawDistance > trackerRadius && rawDistance > 0f) {
@@ -194,10 +217,30 @@ class AccessibilityPointerController(
             } else {
                 1f
             }
-        trackerX = downX + rawTrackerDx * trackerScale
-        trackerY = downY + rawTrackerDy * trackerScale
+        trackerX = trackerOriginX + rawTrackerDx * trackerScale
+        trackerY = trackerOriginY + rawTrackerDy * trackerScale
 
-        cancelled = hypot(trackerX - downX, trackerY - downY) <= cancelRadius
+        cancelled = hypot(trackerX - trackerOriginX, trackerY - trackerOriginY) <= cancelRadius
+    }
+
+    private fun trackerCursorStart(
+        fingerX: Float,
+        fingerY: Float,
+    ): Pair<Float, Float> {
+        val density = service.resources.displayMetrics.density
+        val cursorMargin = RuntimeGestureConfig.trackerCursorDp.coerceAtLeast(8) * density
+        val controlRadius = RuntimeGestureConfig.pointerRadiusDp.coerceAtLeast(32) * density
+        val cursorRadius = RuntimeGestureConfig.trackerCursorDp.coerceAtLeast(8) * density
+        val startOffset = maxOf(controlRadius * 1.35f, cursorRadius * 2.6f, minOf(screenWidth, screenHeight) * 0.1f)
+        val x =
+            if (edge == EdgeGestureDetector.Edge.RIGHT) {
+                fingerX - startOffset
+            } else {
+                fingerX + startOffset
+            }
+        val y = fingerY - startOffset * 0.35f
+        return x.coerceIn(cursorMargin, screenWidth - cursorMargin) to
+            y.coerceIn(cursorMargin, screenHeight - cursorMargin)
     }
 
     private fun maybeTriggerNotificationOnTouch() {
@@ -231,9 +274,21 @@ class AccessibilityPointerController(
     ): Boolean {
         val density = service.resources.displayMetrics.density
         val hotspotHeight =
-            (screenHeight * NOTIFICATION_HOTSPOT_SCREEN_FRACTION)
-                .coerceIn(NOTIFICATION_HOTSPOT_MIN_DP * density, NOTIFICATION_HOTSPOT_MAX_DP * density)
-        return y <= hotspotHeight && x >= 0f && x <= screenWidth
+            RuntimeGestureConfig.notificationTopEdgeDp
+                .coerceIn(GestureConfig.NOTIFICATION_TOP_EDGE_MIN_DP, GestureConfig.NOTIFICATION_TOP_EDGE_MAX_DP) * density
+        val hotspotTop = 0f
+        val hotspotBottom = hotspotTop + hotspotHeight
+        val startPercent =
+            minOf(
+                RuntimeGestureConfig.notificationHotspotStartPercent,
+                RuntimeGestureConfig.notificationHotspotEndPercent,
+            ).coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT) / 100f
+        val endPercent =
+            maxOf(
+                RuntimeGestureConfig.notificationHotspotStartPercent,
+                RuntimeGestureConfig.notificationHotspotEndPercent,
+            ).coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT) / 100f
+        return y >= hotspotTop && y <= hotspotBottom && x >= screenWidth * startPercent && x <= screenWidth * endPercent
     }
 
     private data class Snapshot(
@@ -378,8 +433,5 @@ class AccessibilityPointerController(
         const val TRACKER_CURSOR_SCALE = 3.0f
         const val ARROW_WING_ANGLE_RADIANS = 0.68f
         const val PREFERRED_REFRESH_RATE = 120f
-        const val NOTIFICATION_HOTSPOT_SCREEN_FRACTION = 0.008f
-        const val NOTIFICATION_HOTSPOT_MIN_DP = 4f
-        const val NOTIFICATION_HOTSPOT_MAX_DP = 12f
     }
 }

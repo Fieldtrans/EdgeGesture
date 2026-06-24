@@ -54,11 +54,26 @@ object SavedConfigBroadcaster {
                     GestureConfig.DEFAULT_NOTIFICATION_SHADE_MODE,
                 ),
             ),
+            prefs.getInt(
+                GestureConfig.KEY_NOTIFICATION_TOP_EDGE_DP,
+                GestureConfig.DEFAULT_NOTIFICATION_TOP_EDGE_DP,
+            ).coerceIn(GestureConfig.NOTIFICATION_TOP_EDGE_MIN_DP, GestureConfig.NOTIFICATION_TOP_EDGE_MAX_DP),
+            prefs.getInt(
+                GestureConfig.KEY_NOTIFICATION_HOTSPOT_START_PERCENT,
+                GestureConfig.DEFAULT_NOTIFICATION_HOTSPOT_START_PERCENT,
+            ).coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT),
+            prefs.getInt(
+                GestureConfig.KEY_NOTIFICATION_HOTSPOT_END_PERCENT,
+                GestureConfig.DEFAULT_NOTIFICATION_HOTSPOT_END_PERCENT,
+            ).coerceIn(GestureConfig.NOTIFICATION_HOTSPOT_MIN_PERCENT, GestureConfig.NOTIFICATION_HOTSPOT_MAX_PERCENT),
             prefs.getInt(GestureConfig.KEY_POINTER_RADIUS_DP, GestureConfig.DEFAULT_POINTER_RADIUS_DP),
             prefs.getInt(GestureConfig.KEY_POINTER_CONTROL_ALPHA, GestureConfig.DEFAULT_POINTER_CONTROL_ALPHA),
             prefs.getInt(GestureConfig.KEY_POINTER_SENSITIVITY, GestureConfig.DEFAULT_POINTER_SENSITIVITY),
             prefs.getInt(GestureConfig.KEY_POINTER_ARROW_DP, GestureConfig.DEFAULT_POINTER_ARROW_DP),
-            prefs.getInt(GestureConfig.KEY_POINTER_TOUCH_AREA_DP, GestureConfig.DEFAULT_POINTER_TOUCH_AREA_DP),
+            prefs.getInt(
+                GestureConfig.KEY_POINTER_TOUCH_AREA_DP,
+                GestureConfig.DEFAULT_POINTER_TOUCH_AREA_DP,
+            ).coerceIn(GestureConfig.POINTER_TOUCH_AREA_MIN_DP, GestureConfig.POINTER_TOUCH_AREA_MAX_DP),
             prefs.getInt(GestureConfig.KEY_POINTER_LINE_DP, GestureConfig.DEFAULT_POINTER_LINE_DP),
             prefs.getInt(GestureConfig.KEY_POINTER_MARGIN_DP, GestureConfig.DEFAULT_POINTER_MARGIN_DP),
             prefs.getInt(GestureConfig.KEY_POINTER_CANCEL_DISTANCE_DP, GestureConfig.DEFAULT_POINTER_CANCEL_DISTANCE_DP),

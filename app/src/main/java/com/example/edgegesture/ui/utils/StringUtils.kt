@@ -3,11 +3,6 @@ package com.example.edgegesture.ui.utils
 import com.example.edgegesture.GestureConfig
 import java.util.Locale
 
-/**
- * Internationalization utility function
- *
- * Temporary solution: returns Chinese or English based on system language
- */
 fun t(
     zh: String,
     en: String,
@@ -15,9 +10,6 @@ fun t(
     return if (Locale.getDefault().language.lowercase(Locale.ROOT) == "zh") zh else en
 }
 
-/**
- * Edge label
- */
 fun edgeLabel(edge: String): String {
     return when (edge) {
         "left" -> t("左边缘", "Left Edge")
@@ -28,9 +20,6 @@ fun edgeLabel(edge: String): String {
     }
 }
 
-/**
- * Gesture label
- */
 fun gestureLabel(gesture: String): String {
     return when (gesture) {
         "click" -> t("单击", "Tap")
@@ -44,9 +33,6 @@ fun gestureLabel(gesture: String): String {
     }
 }
 
-/**
- * Action label
- */
 fun actionLabel(action: String): String {
     return when (action) {
         GestureConfig.ACTION_NONE -> t("无动作", "No Action")
@@ -56,9 +42,6 @@ fun actionLabel(action: String): String {
     }
 }
 
-/**
- * Notification shade mode label
- */
 fun notificationShadeModeLabel(mode: String): String {
     return when (mode) {
         GestureConfig.NOTIFICATION_SHADE_TOUCH -> t("碰到就下拉", "Pull on Touch")
@@ -67,9 +50,6 @@ fun notificationShadeModeLabel(mode: String): String {
     }
 }
 
-/**
- * Get available action values for a gesture
- */
 fun actionValuesForGesture(gesture: String): List<String> {
     return GestureConfig.actionValuesForGesture(gesture)
 }

@@ -60,17 +60,6 @@ class SettingsViewModel(
     }
 
     /**
-     * Reset settings to recommended values
-     */
-    fun resetToRecommended() {
-        viewModelScope.launch {
-            val recommended = _settingsState.value.withRecommendedValues()
-            _settingsState.value = recommended
-            configRepository.saveSettings(recommended)
-        }
-    }
-
-    /**
      * Export settings to JSON string
      */
     fun exportSettings(): String {

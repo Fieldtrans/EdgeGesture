@@ -19,13 +19,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PowerSettingsNew
-import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,40 +55,19 @@ fun OverviewPage(
     var showCrashLogDialog by remember { mutableStateOf(false) }
     var crashLog by remember { mutableStateOf<String?>(null) }
 
-    StatusCard(settings, hookStatus, onSettingsChange)
+    StatusCard(
+        settings = settings,
+        hookStatus = hookStatus,
+        onSettingsChange = onSettingsChange,
+        onOpenAccessibilitySettings = {
+            context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        },
+    )
 
     Spacer(Modifier.height(8.dp))
 
     SettingsSection(
-        title = t("标准模式（无障碍）", "Standard Mode (Accessibility)"),
-        icon = Icons.Rounded.TouchApp,
-    ) {
-        Text(
-            text =
-                t(
-                    "无需 Root 的基础模式，依赖系统无障碍服务。适合普通用户使用；如果 LSPosed 增强模式已启动，无障碍触摸层会自动暂停以避免冲突。",
-                    "A no-root basic mode powered by Android Accessibility. It is suitable for normal users; " +
-                        "if the LSPosed enhanced engine is active, the accessibility touch layer pauses " +
-                        "automatically to avoid conflicts.",
-                ),
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        OutlinedButton(
-            onClick = {
-                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            },
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        ) {
-            Text(t("打开无障碍设置", "Open Accessibility Settings"))
-        }
-    }
-
-    Spacer(Modifier.height(8.dp))
-
-    SettingsSection(
-        title = t("当前模式", "Current Mode"),
+        title = t("手势模式", "Gesture Mode"),
         icon = Icons.Rounded.PowerSettingsNew,
     ) {
         ModeSelector(settings, onSettingsChange)
@@ -107,40 +83,37 @@ fun OverviewPage(
             range = GestureConfig.ACCESSIBILITY_MIN_EDGE_WIDTH_DP..GestureConfig.ACCESSIBILITY_MAX_EDGE_WIDTH_DP,
             onValueChange = { onSettingsChange(settings.copy(edgeWidthDp = it)) },
         )
-        SettingSlider(
-            title = t("直线箭头灵敏度", "Line Arrow Sensitivity"),
-            valueText = "${settings.pointerSensitivity}%",
-            description =
-                t(
-                    "线性移动倍率，不随快速滑动额外放大。",
-                    "Linear movement multiplier without fast-swipe acceleration.",
-                ),
-            value = settings.pointerSensitivity,
-            range = 40..180,
-            onValueChange = { onSettingsChange(settings.copy(pointerSensitivity = it)) },
-        )
+        if (settings.pointerControlStyle == GestureConfig.POINTER_STYLE_TRACKER_CURSOR) {
+            SettingSlider(
+                title = t("摇杆灵敏度", "Tracker Sensitivity"),
+                valueText = "${settings.trackerSensitivity}%",
+                description = t("摇杆移动到光标移动的比例。", "Ratio between tracker movement and cursor movement."),
+                value = settings.trackerSensitivity,
+                range = 40..220,
+                onValueChange = { onSettingsChange(settings.copy(trackerSensitivity = it)) },
+            )
+        } else {
+            SettingSlider(
+                title = t("直线箭头灵敏度", "Line Arrow Sensitivity"),
+                valueText = "${settings.pointerSensitivity}%",
+                description =
+                    t(
+                        "线性移动倍率，不随快速滑动额外放大。",
+                        "Linear movement multiplier without fast-swipe acceleration.",
+                    ),
+                value = settings.pointerSensitivity,
+                range = 40..180,
+                onValueChange = { onSettingsChange(settings.copy(pointerSensitivity = it)) },
+            )
+        }
     }
 
     Spacer(Modifier.height(8.dp))
 
-    SettingsSection(t("说明", "Notes"), Icons.Rounded.Palette) {
-        Text(
-            text =
-                t(
-                    "启用 LSPosed 模块后建议重启。杀掉 App 不影响手势；App 只负责保存参数。需要排查时，在 LSPosed 日志里搜索 EdgeGesture。若调出时卡顿，优先降低控制圆透明度。",
-                    "Reboot after enabling the LSPosed module. Killing the app does not stop gestures; " +
-                        "the app only saves settings. Search EdgeGesture in LSPosed logs for troubleshooting. " +
-                        "If the overlay stutters, lower the control circle opacity first.",
-                ),
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-
-    Spacer(Modifier.height(8.dp))
-
-    Column(modifier = Modifier.fillMaxWidth()) {
+    SettingsSection(
+        title = t("维护", "Maintenance"),
+        icon = Icons.Rounded.Info,
+    ) {
         OverviewListItem(
             icon = Icons.Rounded.Info,
             title = t("关于", "About"),
@@ -170,6 +143,19 @@ fun OverviewPage(
             },
         )
     }
+
+    Spacer(Modifier.height(8.dp))
+
+    Text(
+        text =
+            t(
+                "启用 LSPosed 模块后建议重启；App 只负责保存参数，杀掉 App 不会停止已保存的手势配置。",
+                "Reboot after enabling the LSPosed module. The app only saves settings; killing it does not stop saved gestures.",
+            ),
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 
     if (showCrashLogDialog) {
         CrashLogDialog(
